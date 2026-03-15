@@ -24,6 +24,8 @@ Aquí se trabaja principalmente con:
 └── src
 ```
 
+---
+
 ### 🔵 `.dvc/`
 
 Directorio interno gestionado automáticamente por **DVC (Data Version Control)**.
@@ -32,6 +34,7 @@ Contiene información necesaria para el versionamiento de datasets y artefactos 
 
 * **cache/** → almacena los archivos reales versionados por DVC usando hashes (MD5)
 * **tmp/** → archivos temporales usados por DVC
+* **config** → configuración de remotos o comportamiento de DVC
 
 ⚠️ No debe modificarse manualmente.
 
@@ -42,7 +45,7 @@ Contiene información necesaria para el versionamiento de datasets y artefactos 
 Configuraciones del repositorio como:
 
 * workflows de CI/CD
-* plantillas
+* plantillas de Pull Request
 * automatizaciones
 
 ---
@@ -57,9 +60,16 @@ Datasets originales sin transformar.
 
 Los archivos pesados **NO se suben a Git**, se versionan con DVC mediante archivos `.dvc`.
 
+Cada dataset debe tener:
+
+* una carpeta física con los archivos
+* un archivo `.dvc` tracker generado con `dvc add`
+
 #### ⚙️ `data/processed/`
 
 Datasets ya limpiados o transformados para análisis o modelamiento.
+
+Generalmente son salida de pipelines o notebooks.
 
 ---
 
@@ -71,6 +81,9 @@ Contiene notebooks de análisis exploratorio:
 * visualizaciones
 * hipótesis
 * exploración de calidad de datos
+* validación de supuestos
+
+⚠️ La lógica productiva no debe quedarse aquí. Debe migrarse luego a `src/` o a la app.
 
 ---
 
@@ -129,15 +142,95 @@ Luego seleccionar ese kernel dentro del notebook.
 
 ---
 
-## 📂 Versionado de datasets
+## 📂 Versionado de datasets con DVC
 
 Ejemplo:
 
 ```bash
-dvc add data/raw/Default_Clientes.csv
+dvc add data/raw/default_clientes
+```
+
+Luego:
+
+```bash
 git add .
 git commit -m "feat(EDA): track dataset with dvc"
 ```
+
+---
+
+## 🔀 Uso de DVC con múltiples ramas (EDA / modeling / app)
+
+Cuando el proyecto utiliza **DVC para versionar datasets**, es importante entender cómo funciona el cambio de ramas.
+
+Git controla:
+
+* código
+* notebooks
+* archivos `.dvc`
+
+DVC controla:
+
+* los archivos de datos reales
+
+Esto significa que:
+
+👉 Al cambiar de rama con `git checkout`, **los datasets físicos no cambian automáticamente.**
+
+Por ejemplo:
+
+* La rama `EDA` puede tener datasets en `data/raw/`
+* La rama `app` puede no tenerlos
+* Sin embargo, al cambiar de rama, los folders pueden seguir existiendo localmente
+
+Esto ocurre porque Git no versiona los archivos pesados ignorados por `.gitignore`.
+
+---
+
+### ✅ Sincronizar datasets después de cambiar de rama
+
+Siempre que cambies de rama en un proyecto con DVC debes ejecutar:
+
+```bash
+poetry run dvc checkout
+```
+
+Este comando:
+
+* compara los archivos `.dvc` de la rama actual
+* sincroniza los archivos físicos del workspace
+* elimina datasets que no pertenecen a la rama
+* restaura datasets que sí pertenecen a la rama
+
+---
+
+### 🧠 Flujo recomendado profesional
+
+1️⃣ Cambiar de rama
+
+```bash
+git checkout EDA
+```
+
+2️⃣ Sincronizar datasets
+
+```bash
+poetry run dvc checkout
+```
+
+3️⃣ (Opcional) traer datos desde remoto
+
+```bash
+poetry run dvc pull
+```
+
+---
+
+### 🚨 Regla importante
+
+Nunca asumir que los datasets visibles en disco corresponden a la rama actual.
+
+Siempre usar `dvc checkout` para garantizar consistencia.
 
 ---
 
@@ -148,3 +241,7 @@ Siempre ejecutar scripts dentro del entorno poetry:
 ```bash
 poetry run python script.py
 ```
+
+---
+
+✅ Este módulo está preparado para exploración profesional reproducible y trabajo colaborativo con control de versiones de código y datos.
