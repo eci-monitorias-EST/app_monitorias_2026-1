@@ -2,3 +2,5 @@
     remote = gdrive
 ['remote "gdrive"']
     url = gdrive://1wpM11DMfzpCWIqQBXOuflMbbUyuJlo1k
+    gdrive_use_service_account = true
+    gdrive_service_account_json_file_path = C:\Users\SEBASTIAN\Downloads\root-rock-391900-82d725ac98ae.json
