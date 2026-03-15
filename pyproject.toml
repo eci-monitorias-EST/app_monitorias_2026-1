@@ -12,7 +12,8 @@ dependencies = [
     "pandas (>=2.2,<3.0)",
     "plotly (>=6.6.0,<7.0.0)"
 ]
-
+[tool.poetry]
+package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
