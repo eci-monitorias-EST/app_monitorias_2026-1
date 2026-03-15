@@ -1,0 +1,6 @@
+outs:
+- md5: 2db2a0d49abd87be8f5fdd149540d487.dir
+  size: 186622
+  nfiles: 4
+  hash: md5
+  path: german_credit
