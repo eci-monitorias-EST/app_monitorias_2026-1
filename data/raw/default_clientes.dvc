@@ -1,0 +1,6 @@
+outs:
+- md5: e352c1b6d94438e6d4cafdd276da912d.dir
+  size: 2897193
+  nfiles: 1
+  hash: md5
+  path: default_clientes
