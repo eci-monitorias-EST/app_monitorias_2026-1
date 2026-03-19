@@ -75,6 +75,98 @@ def _save_profile_in_session(payload: dict, backend_id: int | None = None) -> No
     }
 
 
+def _normalize_id(value: object) -> int | None:
+    if isinstance(value, int) and value > 0:
+        return value
+    if isinstance(value, str) and value.isdigit():
+        parsed = int(value)
+        if parsed > 0:
+            return parsed
+    return None
+
+
+def _post_payload(payload: dict) -> dict | None:
+    try:
+        response = requests.post(
+            get_script_url(),
+            json=payload,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+        )
+
+        if response.status_code == 401:
+            st.error(
+                "El endpoint respondió 401 (Unauthorized). "
+                "Revisa en Apps Script que la implementación web tenga acceso 'Anyone' o 'Anyone with link', "
+                "y vuelve a implementar para generar una URL vigente."
+            )
+            return None
+
+        if not response.ok:
+            st.error(
+                f"Error HTTP {response.status_code} desde Apps Script. "
+                "Verifica permisos del deployment y la URL publicada."
+            )
+            return None
+
+        try:
+            resultado = response.json()
+        except ValueError:
+            st.error("El endpoint respondió con un formato no válido.")
+            return None
+
+        return resultado
+    except requests.RequestException as exc:
+        st.error(f"Error de conexión: {exc}")
+        return None
+
+
+def _render_update_section(existing_profile: dict) -> None:
+    st.markdown("### ¿Quieres actualizar datos?")
+    st.info("Ya tienes una sesión activa. Si actualizas, se modificará el mismo registro por ID y no se creará otro.")
+
+    with st.expander("Actualizar datos del participante", expanded=True):
+        with st.form("formulario_actualizar_datos"):
+            nombre = st.text_input("Nombre", value=str(existing_profile.get("nombre", "")))
+            sexo_actual = str(existing_profile.get("sexo", ""))
+            opciones_sexo = ["", "Masculino", "Femenino", "Otro"]
+            sexo_index = opciones_sexo.index(sexo_actual) if sexo_actual in opciones_sexo else 0
+            sexo = st.selectbox("Sexo", opciones_sexo, index=sexo_index)
+            colegio = st.text_input("Colegio", value=str(existing_profile.get("colegio", "")))
+            submit_update = st.form_submit_button("Actualizar datos")
+
+        if not submit_update:
+            return
+
+        if not all([nombre, sexo, colegio]):
+            st.warning("Completa todos los campos para actualizar.")
+            return
+
+        participant_id = _normalize_id(existing_profile.get("id"))
+        if participant_id is None:
+            st.error("El id de la sesión no es válido.")
+            return
+
+        payload = {
+            "token": get_form_token(),
+            "accion": "actualizar_bienvenida",
+            "id": participant_id,
+            "Dia": datetime.now().strftime("%Y-%m-%d"),
+            "nombre": nombre.strip(),
+            "sexo": sexo,
+            "colegio": colegio.strip(),
+        }
+
+        resultado = _post_payload(payload)
+        if not resultado:
+            return
+
+        if resultado.get("status") == "success":
+            _save_profile_in_session(payload, participant_id)
+            st.success(f"Datos actualizados para el id {participant_id}.")
+        else:
+            st.error(resultado.get("message", "Ocurrió un error al actualizar."))
+
+
 def render() -> None:
     st.title("Recolección de datos")
     st.write("Completa el formulario para registrar respuestas en Google Sheets.")
@@ -86,6 +178,7 @@ def render() -> None:
             f"Participante: {existing_profile['nombre']} | "
             f"Sexo: {existing_profile['sexo']} | Colegio: {existing_profile['colegio']}"
         )
+        _render_update_section(existing_profile)
         if st.button("Registrar otra persona en esta sesión"):
             st.session_state.pop("participant_profile", None)
             st.rerun()
@@ -120,41 +213,12 @@ def render() -> None:
     }
 
     try:
-        response = requests.post(
-            get_script_url(),
-            json=payload,
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-        )
-
-        if response.status_code == 401:
-            st.error(
-                "El endpoint respondió 401 (Unauthorized). "
-                "Revisa en Apps Script que la implementación web tenga acceso 'Anyone' o 'Anyone with link', "
-                "y vuelve a implementar para generar una URL vigente."
-            )
-            return
-
-        if not response.ok:
-            st.error(
-                f"Error HTTP {response.status_code} desde Apps Script. "
-                "Verifica permisos del deployment y la URL publicada."
-            )
-            return
-
-        try:
-            resultado = response.json()
-        except ValueError:
-            st.error("El endpoint respondió con un formato no válido.")
+        resultado = _post_payload(payload)
+        if not resultado:
             return
 
         if resultado.get("status") == "success":
-            participant_id = resultado.get("id")
-            normalized_id = None
-            if isinstance(participant_id, int):
-                normalized_id = participant_id
-            elif isinstance(participant_id, str) and participant_id.isdigit():
-                normalized_id = int(participant_id)
-
+            normalized_id = _normalize_id(resultado.get("id"))
             _save_profile_in_session(payload, normalized_id)
             st.success("Registro guardado correctamente.")
             st.caption("Perfil del participante guardado en memoria de sesión para próximos comentarios.")
@@ -167,5 +231,3 @@ def render() -> None:
                 st.caption(f"Hojas disponibles: {', '.join(resultado.get('availableSheets', []))}")
     except ValueError as exc:
         st.error(str(exc))
-    except requests.RequestException as exc:
-        st.error(f"Error de conexión: {exc}")

@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
 
 
-DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCUZlvgznLte0Q1UmSRKJkePzCo7lu76FLz69bnc9vFhiTpcVlplSf_tZX9yxUuqfbjw/exec"
+DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybLfO1BowhPgSz-z1BwY3mTBX8B9QZntblY_EbbusslFt_YRts3c4ygwl24YBRuXVGYQ/exec"
 DEFAULT_FORM_TOKEN = "mi_token_123"
 DEFAULT_TIMEOUT_SECONDS = 10
 
