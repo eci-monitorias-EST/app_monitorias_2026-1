@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "Bankify Monitorias",
+    "theme_color": "#155eef",
+    "hero_gradient": "linear-gradient(120deg, #0f172a 0%, #155eef 55%, #38bdf8 100%)"
+  },
+  "persistence": {
+    "local_state_path": "data/processed/app_state.json",
+    "sync_to_apps_script": true,
+    "request_timeout_seconds": 10
+  },
+  "comments": {
+    "embedding_provider": "fasttext",
+    "embedding_dimensions": 64,
+    "fasttext_model_path": "",
+    "min_comment_length": 12
+  },
+  "modeling": {
+    "random_state": 42,
+    "max_rows_3d": 400,
+    "umap_neighbors": 10
+  }
+}

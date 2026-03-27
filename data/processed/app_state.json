@@ -1,0 +1,480 @@
+{
+  "participants": {
+    "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9": {
+      "participant_id": "6b75c5181141",
+      "access_key_hash": "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9",
+      "public_alias": "P-001",
+      "profile": {
+        "Dia": "2026-03-26",
+        "nombre": "carcel",
+        "sexo": "Masculino",
+        "colegio": "1",
+        "edad": 18,
+        "grado": "Undécimo",
+        "interes_carrera": "LL",
+        "matematicas_avanzadas": "ALL"
+      },
+      "selected_exercise": "credit_approval",
+      "exercise_progress": {
+        "credit_approval": {
+          "exercise": "credit_approval",
+          "dataset_comment": "TODO",
+          "analytics_comment": "ALL",
+          "prediction_reflection": "ALL",
+          "prediction_inputs": {
+            "status_checking_account": "A11",
+            "duration_month": 18.0,
+            "credit_history": "A30",
+            "purpose": "A40",
+            "credit_amount": 2319.5,
+            "savings_account": "A61",
+            "employment_since": "A71",
+            "installment_rate": 3.0,
+            "personal_status_sex": "A91",
+            "other_debtors": "A101",
+            "present_residence_since": 3.0,
+            "property": "A121",
+            "age_years": 33.0,
+            "other_installment_plans": "A141",
+            "housing": "A151",
+            "existing_credits_bank": 1.0,
+            "job": "A171",
+            "liable_people": 1.0,
+            "telephone": "A191",
+            "foreign_worker": "A201"
+          },
+          "prediction_output": {
+            "exercise": "credit_approval",
+            "probability": 0.8945459474369948,
+            "label": "Aprobado",
+            "features": {
+              "status_checking_account": "A11",
+              "duration_month": 18.0,
+              "credit_history": "A30",
+              "purpose": "A40",
+              "credit_amount": 2319.5,
+              "savings_account": "A61",
+              "employment_since": "A71",
+              "installment_rate": 3.0,
+              "personal_status_sex": "A91",
+              "other_debtors": "A101",
+              "present_residence_since": 3.0,
+              "property": "A121",
+              "age_years": 33.0,
+              "other_installment_plans": "A141",
+              "housing": "A151",
+              "existing_credits_bank": 1.0,
+              "job": "A171",
+              "liable_people": 1.0,
+              "telephone": "A191",
+              "foreign_worker": "A201"
+            },
+            "provider": "logistic_regression",
+            "local_explanations": {
+              "lime": {
+                "items": [
+                  {
+                    "feature": "cat__status_checking_account_A11",
+                    "impact": 0.7345112938922106
+                  },
+                  {
+                    "feature": "cat__purpose_A40",
+                    "impact": 0.7186758542966816
+                  },
+                  {
+                    "feature": "cat__foreign_worker_A201",
+                    "impact": 0.5790406935226305
+                  },
+                  {
+                    "feature": "cat__savings_account_A61",
+                    "impact": 0.5637987299100292
+                  },
+                  {
+                    "feature": "cat__credit_history_A30",
+                    "impact": 0.4859132690014458
+                  },
+                  {
+                    "feature": "cat__housing_A151",
+                    "impact": 0.3311153611815366
+                  },
+                  {
+                    "feature": "cat__personal_status_sex_A91",
+                    "impact": 0.3295404598087592
+                  },
+                  {
+                    "feature": "cat__property_A121",
+                    "impact": -0.29023611028402535
+                  },
+                  {
+                    "feature": "cat__job_A171",
+                    "impact": -0.2654386767240211
+                  },
+                  {
+                    "feature": "cat__other_installment_plans_A141",
+                    "impact": 0.2306785537179552
+                  }
+                ],
+                "provider": "local_surrogate"
+              },
+              "shap_local": {
+                "items": [
+                  {
+                    "feature": "cat__status_checking_account_A11",
+                    "impact": 0.7345112938922106
+                  },
+                  {
+                    "feature": "cat__purpose_A40",
+                    "impact": 0.7186758542966816
+                  },
+                  {
+                    "feature": "cat__foreign_worker_A201",
+                    "impact": 0.5790406935226305
+                  },
+                  {
+                    "feature": "cat__savings_account_A61",
+                    "impact": 0.5637987299100292
+                  },
+                  {
+                    "feature": "cat__credit_history_A30",
+                    "impact": 0.4859132690014458
+                  },
+                  {
+                    "feature": "cat__housing_A151",
+                    "impact": 0.3311153611815366
+                  },
+                  {
+                    "feature": "cat__personal_status_sex_A91",
+                    "impact": 0.3295404598087592
+                  },
+                  {
+                    "feature": "cat__property_A121",
+                    "impact": -0.29023611028402535
+                  },
+                  {
+                    "feature": "cat__job_A171",
+                    "impact": -0.2654386767240211
+                  },
+                  {
+                    "feature": "cat__other_installment_plans_A141",
+                    "impact": 0.2306785537179552
+                  }
+                ],
+                "provider": "linear_shap_surrogate"
+              }
+            },
+            "global_explanations": {
+              "shap_global": {
+                "items": [
+                  {
+                    "feature": "cat__status_checking_account_A14",
+                    "importance": 0.9207434657454723
+                  },
+                  {
+                    "feature": "cat__credit_history_A34",
+                    "importance": 0.8304871572985444
+                  },
+                  {
+                    "feature": "cat__purpose_A41",
+                    "importance": 0.8204154763375191
+                  },
+                  {
+                    "feature": "cat__status_checking_account_A11",
+                    "importance": 0.7345112938922106
+                  },
+                  {
+                    "feature": "cat__purpose_A40",
+                    "importance": 0.7186758542966816
+                  },
+                  {
+                    "feature": "cat__purpose_A46",
+                    "importance": 0.6943367873711689
+                  },
+                  {
+                    "feature": "cat__other_debtors_A103",
+                    "importance": 0.6754676284987033
+                  },
+                  {
+                    "feature": "cat__purpose_A48",
+                    "importance": 0.6050685075488883
+                  },
+                  {
+                    "feature": "cat__credit_history_A31",
+                    "importance": 0.6016470441522153
+                  },
+                  {
+                    "feature": "cat__savings_account_A64",
+                    "importance": 0.5969853600519347
+                  },
+                  {
+                    "feature": "cat__foreign_worker_A202",
+                    "importance": 0.5917310080282219
+                  },
+                  {
+                    "feature": "cat__foreign_worker_A201",
+                    "importance": 0.5790406935226305
+                  }
+                ],
+                "provider": "coefficient_global_importance"
+              }
+            },
+            "pedagogical_summary": "En Aprobación de crédito, el modelo clasificó el caso como 'Aprobado' con una probabilidad estimada de 89.5%. Las variables con mayor peso local fueron cat__status_checking_account_A11 (aumenta la probabilidad), cat__purpose_A40 (aumenta la probabilidad), cat__foreign_worker_A201 (aumenta la probabilidad). La interpretación pedagógica es que el modelo compara el perfil actual con patrones históricos y usa esas señales para justificar la decisión."
+          },
+          "updated_at": "2026-03-27T04:17:53.934937+00:00"
+        }
+      },
+      "feedback": {
+        "rating": 4,
+        "summary": "INCREIBLE",
+        "missing_topics": "",
+        "improvement_ideas": "",
+        "updated_at": "2026-03-27T04:18:14.182870+00:00"
+      },
+      "completed_at": "2026-03-27T04:18:14.189876+00:00",
+      "created_at": "2026-03-27T04:15:43.905281+00:00",
+      "updated_at": "2026-03-27T04:18:14.189876+00:00"
+    },
+    "4dd68e2ab3a30973318ea903e088b3d3480655ef4236109fe47272c1c1582880": {
+      "participant_id": "1c81f5d170f7",
+      "access_key_hash": "4dd68e2ab3a30973318ea903e088b3d3480655ef4236109fe47272c1c1582880",
+      "public_alias": "P-002",
+      "profile": {
+        "Dia": "2026-03-26",
+        "nombre": "gimfa",
+        "sexo": "Masculino",
+        "colegio": "andrea",
+        "edad": 18,
+        "grado": "Sexto",
+        "interes_carrera": "all",
+        "matematicas_avanzadas": "algerba"
+      },
+      "selected_exercise": "default_risk",
+      "exercise_progress": {
+        "default_risk": {
+          "exercise": "default_risk",
+          "dataset_comment": "datos de la persona del banco",
+          "analytics_comment": "ninguno",
+          "prediction_reflection": "invreible",
+          "prediction_inputs": {
+            "LIMIT_BAL": 140000.0,
+            "SEX": 2.0,
+            "EDUCATION": 2.0,
+            "MARRIAGE": 2.0,
+            "AGE": 34.0,
+            "PAY_0": 0.0,
+            "PAY_2": 0.0,
+            "PAY_3": 0.0,
+            "PAY_4": 0.0,
+            "PAY_5": 0.0,
+            "PAY_6": 0.0,
+            "BILL_AMT1": 22381.5,
+            "BILL_AMT2": 21200.0,
+            "BILL_AMT3": 20088.5,
+            "BILL_AMT4": 19052.0,
+            "BILL_AMT5": 18104.5,
+            "BILL_AMT6": 17071.0,
+            "PAY_AMT1": 2100.0,
+            "PAY_AMT2": 2009.0,
+            "PAY_AMT3": 1800.0,
+            "PAY_AMT4": 1500.0,
+            "PAY_AMT5": 1500.0,
+            "PAY_AMT6": 1500.0
+          },
+          "prediction_output": {
+            "exercise": "default_risk",
+            "probability": 0.20291856740352546,
+            "label": "Baja probabilidad de mora",
+            "features": {
+              "LIMIT_BAL": 140000.0,
+              "SEX": 2.0,
+              "EDUCATION": 2.0,
+              "MARRIAGE": 2.0,
+              "AGE": 34.0,
+              "PAY_0": 0.0,
+              "PAY_2": 0.0,
+              "PAY_3": 0.0,
+              "PAY_4": 0.0,
+              "PAY_5": 0.0,
+              "PAY_6": 0.0,
+              "BILL_AMT1": 22381.5,
+              "BILL_AMT2": 21200.0,
+              "BILL_AMT3": 20088.5,
+              "BILL_AMT4": 19052.0,
+              "BILL_AMT5": 18104.5,
+              "BILL_AMT6": 17071.0,
+              "PAY_AMT1": 2100.0,
+              "PAY_AMT2": 2009.0,
+              "PAY_AMT3": 1800.0,
+              "PAY_AMT4": 1500.0,
+              "PAY_AMT5": 1500.0,
+              "PAY_AMT6": 1500.0
+            },
+            "provider": "logistic_regression",
+            "local_explanations": {
+              "lime": {
+                "items": [
+                  {
+                    "feature": "num__BILL_AMT1",
+                    "impact": 0.15472047662516028
+                  },
+                  {
+                    "feature": "num__MARRIAGE",
+                    "impact": -0.06913034020904664
+                  },
+                  {
+                    "feature": "num__BILL_AMT2",
+                    "impact": -0.057781340666516585
+                  },
+                  {
+                    "feature": "num__PAY_AMT1",
+                    "impact": 0.04762536603214458
+                  },
+                  {
+                    "feature": "num__BILL_AMT3",
+                    "impact": -0.04390136704731258
+                  },
+                  {
+                    "feature": "num__SEX",
+                    "impact": -0.043015581955922366
+                  },
+                  {
+                    "feature": "num__PAY_AMT2",
+                    "impact": 0.03823870976090659
+                  },
+                  {
+                    "feature": "num__LIMIT_BAL",
+                    "impact": 0.02099484681387005
+                  },
+                  {
+                    "feature": "num__EDUCATION",
+                    "impact": -0.014925806595702628
+                  },
+                  {
+                    "feature": "num__PAY_AMT4",
+                    "impact": 0.013361652445677812
+                  }
+                ],
+                "provider": "local_surrogate"
+              },
+              "shap_local": {
+                "items": [
+                  {
+                    "feature": "num__BILL_AMT1",
+                    "impact": 0.15472047662516028
+                  },
+                  {
+                    "feature": "num__MARRIAGE",
+                    "impact": -0.06913034020904664
+                  },
+                  {
+                    "feature": "num__BILL_AMT2",
+                    "impact": -0.057781340666516585
+                  },
+                  {
+                    "feature": "num__PAY_AMT1",
+                    "impact": 0.04762536603214458
+                  },
+                  {
+                    "feature": "num__BILL_AMT3",
+                    "impact": -0.04390136704731258
+                  },
+                  {
+                    "feature": "num__SEX",
+                    "impact": -0.043015581955922366
+                  },
+                  {
+                    "feature": "num__PAY_AMT2",
+                    "impact": 0.03823870976090659
+                  },
+                  {
+                    "feature": "num__LIMIT_BAL",
+                    "impact": 0.02099484681387005
+                  },
+                  {
+                    "feature": "num__EDUCATION",
+                    "impact": -0.014925806595702628
+                  },
+                  {
+                    "feature": "num__PAY_AMT4",
+                    "impact": 0.013361652445677812
+                  }
+                ],
+                "provider": "linear_shap_surrogate"
+              }
+            },
+            "global_explanations": {
+              "shap_global": {
+                "items": [
+                  {
+                    "feature": "num__PAY_0",
+                    "importance": 0.6485904968690104
+                  },
+                  {
+                    "feature": "num__BILL_AMT1",
+                    "importance": 0.3950090963345644
+                  },
+                  {
+                    "feature": "num__PAY_AMT2",
+                    "importance": 0.22520492090918331
+                  },
+                  {
+                    "feature": "num__PAY_AMT1",
+                    "importance": 0.2213557802999311
+                  },
+                  {
+                    "feature": "num__BILL_AMT2",
+                    "importance": 0.1469829582838291
+                  },
+                  {
+                    "feature": "num__BILL_AMT3",
+                    "importance": 0.1130741393684487
+                  },
+                  {
+                    "feature": "num__PAY_2",
+                    "importance": 0.09941082907170387
+                  },
+                  {
+                    "feature": "num__LIMIT_BAL",
+                    "importance": 0.09911056973030756
+                  },
+                  {
+                    "feature": "num__PAY_3",
+                    "importance": 0.08607744953524331
+                  },
+                  {
+                    "feature": "num__MARRIAGE",
+                    "importance": 0.08051919368914279
+                  },
+                  {
+                    "feature": "num__EDUCATION",
+                    "importance": 0.08032043549708562
+                  },
+                  {
+                    "feature": "num__AGE",
+                    "importance": 0.06832295397352345
+                  }
+                ],
+                "provider": "coefficient_global_importance"
+              }
+            },
+            "pedagogical_summary": "En Probabilidad de mora, el modelo clasificó el caso como 'Baja probabilidad de mora' con una probabilidad estimada de 20.3%. Las variables con mayor peso local fueron num__BILL_AMT1 (aumenta la probabilidad), num__MARRIAGE (reduce la probabilidad), num__BILL_AMT2 (reduce la probabilidad). La interpretación pedagógica es que el modelo compara el perfil actual con patrones históricos y usa esas señales para justificar la decisión."
+          },
+          "updated_at": "2026-03-27T04:31:43.527607+00:00"
+        }
+      },
+      "feedback": {
+        "rating": 2,
+        "summary": "buena",
+        "missing_topics": "",
+        "improvement_ideas": "",
+        "updated_at": "2026-03-27T04:32:59.493120+00:00"
+      },
+      "completed_at": "2026-03-27T04:33:03.473801+00:00",
+      "created_at": "2026-03-27T04:24:42.813532+00:00",
+      "updated_at": "2026-03-27T04:33:03.473801+00:00"
+    }
+  },
+  "metadata": {
+    "version": 1,
+    "participants": 2
+  }
+}

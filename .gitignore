@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 apps_script_completo.txt
+.env
+.streamlit/secrets.toml
