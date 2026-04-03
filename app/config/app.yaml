@@ -10,8 +10,12 @@
     "request_timeout_seconds": 10
   },
   "comments": {
-    "embedding_provider": "fasttext",
+    "embedding_provider": "auto",
+    "preferred_embedding_provider": "minilm",
+    "fallback_embedding_provider": "fasttext",
     "embedding_dimensions": 64,
+    "minilm_model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "minilm_cache_folder": "",
     "fasttext_model_path": "",
     "min_comment_length": 12
   },

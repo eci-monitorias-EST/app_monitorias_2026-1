@@ -154,3 +154,9 @@ A change is only considered complete when:
 3. Tests were added or updated with `pytest`.
 4. The implementation fits the repository structure.
 5. The change is understandable without extra explanation.
+
+## Local Skills
+
+| Skill | Description | Location |
+| --- | --- | --- |
+| `detectar-falsos-positivos` | Evalúa si un hallazgo corresponde a un falso positivo, un error válido, un caso ambiguo o ruido no material. | `skills/detectar-falsos-positivos/SKILL.md` |

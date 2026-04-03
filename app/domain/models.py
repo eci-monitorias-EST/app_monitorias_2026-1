@@ -40,6 +40,8 @@ class ExerciseProgress:
     prediction_reflection: str = ""
     prediction_inputs: dict[str, Any] = field(default_factory=dict)
     prediction_output: dict[str, Any] = field(default_factory=dict)
+    feedback: FeedbackRecord | None = None
+    completed_at: str | None = None
     updated_at: str = field(default_factory=utc_now_iso)
 
     def merge(self, payload: dict[str, Any]) -> None:
@@ -72,8 +74,6 @@ class ParticipantRecord:
     profile: dict[str, Any]
     selected_exercise: str | None = None
     exercise_progress: dict[str, ExerciseProgress] = field(default_factory=dict)
-    feedback: FeedbackRecord | None = None
-    completed_at: str | None = None
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
 
@@ -86,21 +86,23 @@ class ParticipantRecord:
         self.updated_at = utc_now_iso()
         return progress
 
-    def set_feedback(self, feedback: FeedbackRecord) -> None:
-        self.feedback = feedback
+    def set_feedback(self, exercise: str, feedback: FeedbackRecord) -> None:
+        progress = self.upsert_progress(exercise, {})
+        progress.feedback = feedback
+        progress.updated_at = utc_now_iso()
         self.updated_at = utc_now_iso()
 
-    def mark_completed(self) -> None:
-        self.completed_at = utc_now_iso()
-        self.updated_at = self.completed_at
+    def mark_completed(self, exercise: str) -> None:
+        progress = self.upsert_progress(exercise, {})
+        progress.completed_at = utc_now_iso()
+        progress.updated_at = progress.completed_at
+        self.updated_at = progress.completed_at
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["exercise_progress"] = {
             key: value.to_dict() for key, value in self.exercise_progress.items()
         }
-        if self.feedback is not None:
-            payload["feedback"] = self.feedback.to_dict()
         return payload
 
     @classmethod
@@ -110,7 +112,19 @@ class ParticipantRecord:
             for key, value in payload.get("exercise_progress", {}).items()
         }
         feedback_payload = payload.get("feedback")
-        feedback = FeedbackRecord(**feedback_payload) if feedback_payload else None
+        completed_at = payload.get("completed_at")
+        exercise_for_legacy_payload = payload.get("selected_exercise")
+        if exercise_for_legacy_payload is None and progress:
+            exercise_for_legacy_payload = next(iter(progress))
+        if exercise_for_legacy_payload is not None and (feedback_payload or completed_at):
+            exercise_progress = progress.get(exercise_for_legacy_payload)
+            if exercise_progress is None:
+                exercise_progress = ExerciseProgress(exercise=exercise_for_legacy_payload)
+                progress[exercise_for_legacy_payload] = exercise_progress
+            if feedback_payload and exercise_progress.feedback is None:
+                exercise_progress.feedback = FeedbackRecord(**feedback_payload)
+            if completed_at and exercise_progress.completed_at is None:
+                exercise_progress.completed_at = completed_at
         return cls(
             participant_id=payload["participant_id"],
             access_key_hash=payload["access_key_hash"],
@@ -118,8 +132,6 @@ class ParticipantRecord:
             profile=payload.get("profile", {}),
             selected_exercise=payload.get("selected_exercise"),
             exercise_progress=progress,
-            feedback=feedback,
-            completed_at=payload.get("completed_at"),
             created_at=payload.get("created_at", utc_now_iso()),
             updated_at=payload.get("updated_at", utc_now_iso()),
         )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Any
 
 from domain.models import FeedbackRecord, ParticipantRecord
 from services.remote_sync import RemoteSyncClient
@@ -44,15 +45,24 @@ class SessionService:
         )
         return record
 
-    def save_feedback(self, participant_id: str, payload: dict[str, object]) -> ParticipantRecord:
-        feedback = FeedbackRecord(**payload)
-        record = self.store.upsert_feedback(participant_id, feedback)
-        self.remote_sync.sync_feedback({"participant_id": participant_id, "payload": asdict(feedback)})
+    def save_feedback(
+        self, participant_id: str, exercise: str, payload: dict[str, Any]
+    ) -> ParticipantRecord:
+        feedback = FeedbackRecord(
+            rating=int(payload["rating"]),
+            summary=str(payload["summary"]),
+            missing_topics=str(payload.get("missing_topics", "")),
+            improvement_ideas=str(payload.get("improvement_ideas", "")),
+        )
+        record = self.store.upsert_feedback(participant_id, exercise, feedback)
+        self.remote_sync.sync_feedback(
+            {"participant_id": participant_id, "exercise": exercise, "payload": asdict(feedback)}
+        )
         return record
 
-    def complete_activity(self, participant_id: str) -> ParticipantRecord:
-        record = self.store.mark_completed(participant_id)
-        self.remote_sync.sync_completion({"participant_id": participant_id})
+    def complete_activity(self, participant_id: str, exercise: str) -> ParticipantRecord:
+        record = self.store.mark_completed(participant_id, exercise)
+        self.remote_sync.sync_completion({"participant_id": participant_id, "exercise": exercise})
         return record
 
     def get_record(self, participant_id: str) -> ParticipantRecord | None:

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import os
 import re
 import unicodedata
-from dataclasses import dataclass
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from domain.models import CompletedComment
 from services.configuration import load_app_config
+from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingProvider
 
 
 SPANISH_STOPWORDS = {
@@ -17,13 +16,6 @@ SPANISH_STOPWORDS = {
     "con", "del", "al", "se", "su", "sus", "me", "mi", "mis", "es", "son", "muy", "mas",
     "pero", "porque", "como", "lo", "le", "les", "ha", "han", "fue", "ser", "estar",
 }
-
-
-@dataclass
-class EmbeddingResult:
-    matrix: np.ndarray
-    provider: str
-
 
 class TextCleaner:
     def clean(self, text: str) -> str:
@@ -34,31 +26,6 @@ class TextCleaner:
         normalized = re.sub(r"\s+", " ", normalized).strip()
         tokens = [token for token in normalized.split() if token not in SPANISH_STOPWORDS]
         return " ".join(tokens)
-
-
-class FacebookEmbeddingProvider:
-    def __init__(self) -> None:
-        config = load_app_config()
-        comments = config.comments
-        self.embedding_dimensions = int(comments.get("embedding_dimensions", 64))
-        self.model_path = os.getenv("FASTTEXT_MODEL_PATH") or comments.get("fasttext_model_path", "")
-
-    def encode(self, texts: list[str]) -> EmbeddingResult:
-        if not self.model_path:
-            raise RuntimeError(
-                "Falta FASTTEXT_MODEL_PATH. Configura un modelo fastText de Facebook para generar embeddings reales."
-            )
-        try:
-            import fasttext  # type: ignore
-        except Exception as exc:
-            raise RuntimeError(
-                "No se pudo importar fastText. Instala la dependencia del proyecto para usar embeddings de Facebook."
-            ) from exc
-
-        model = fasttext.load_model(self.model_path)
-        vectors = np.vstack([model.get_sentence_vector(text) for text in texts])
-        return EmbeddingResult(matrix=vectors, provider="facebook_fasttext")
-
 
 class DimensionalityReducer:
     def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
@@ -78,10 +45,15 @@ class DimensionalityReducer:
 
 
 class CommentAnalyticsService:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        embedder: EmbeddingProvider | None = None,
+        reducer: DimensionalityReducer | None = None,
+    ) -> None:
         self.cleaner = TextCleaner()
-        self.embedder = FacebookEmbeddingProvider()
-        self.reducer = DimensionalityReducer()
+        self.embedder = embedder or ConfigurableEmbeddingProvider(load_app_config().comments)
+        self.reducer = reducer or DimensionalityReducer()
 
     def build_projection(self, comments: list[CompletedComment]) -> dict[str, object]:
         if not comments:

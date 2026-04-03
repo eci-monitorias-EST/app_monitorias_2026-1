@@ -6,6 +6,7 @@ from services.modeling import DatasetCatalog, ModelRegistry, PredictionService
 from services.remote_sync import build_remote_sync_client
 from services.session_service import SessionService
 from services.storage import JsonStateStore
+from services.submission_validation import SubmissionValidationService
 from services.text_pipeline import CommentAnalyticsService, CommentKeywordService
 
 
@@ -19,6 +20,7 @@ class AppContainer:
         self.predictions = PredictionService(self.models)
         self.comments = CommentAnalyticsService()
         self.keywords = CommentKeywordService()
+        self.submission_validation = SubmissionValidationService()
 
 
 @lru_cache(maxsize=1)

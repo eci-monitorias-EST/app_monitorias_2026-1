@@ -99,20 +99,22 @@ class JsonStateStore:
                 return record
         raise KeyError(f"Participant not found: {participant_id}")
 
-    def upsert_feedback(self, participant_id: str, feedback: FeedbackRecord) -> ParticipantRecord:
+    def upsert_feedback(
+        self, participant_id: str, exercise: str, feedback: FeedbackRecord
+    ) -> ParticipantRecord:
         records = self._load_records()
         for record in records.values():
             if record.participant_id == participant_id:
-                record.set_feedback(feedback)
+                record.set_feedback(exercise, feedback)
                 self._save_records(records)
                 return record
         raise KeyError(f"Participant not found: {participant_id}")
 
-    def mark_completed(self, participant_id: str) -> ParticipantRecord:
+    def mark_completed(self, participant_id: str, exercise: str) -> ParticipantRecord:
         records = self._load_records()
         for record in records.values():
             if record.participant_id == participant_id:
-                record.mark_completed()
+                record.mark_completed(exercise)
                 self._save_records(records)
                 return record
         raise KeyError(f"Participant not found: {participant_id}")
@@ -120,10 +122,10 @@ class JsonStateStore:
     def list_completed_comments(self, exercise: str, current_participant_id: str) -> list[CompletedComment]:
         comments: list[CompletedComment] = []
         for record in self._load_records().values():
-            if record.completed_at is None:
-                continue
             progress = record.exercise_progress.get(exercise)
             if progress is None:
+                continue
+            if progress.completed_at is None:
                 continue
             combined = " ".join(
                 [

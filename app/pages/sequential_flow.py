@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
@@ -10,31 +9,18 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from components.style import inject_global_styles
-from domain.models import ExerciseOption
+from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
+from services.modeling import DatasetBundle
 from services.app_container import get_container
-
-
-@dataclass(frozen=True)
-class StepDefinition:
-    number: int
-    title: str
-    render_fn: str
+from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
+from services.submission_validation import SubmissionValidationService
 
 
 class SequentialLearningFlow:
-    STEPS = [
-        StepDefinition(1, "Bienvenida", "_render_welcome"),
-        StepDefinition(2, "Recolección de datos", "_render_data_collection"),
-        StepDefinition(3, "Elección del ejercicio", "_render_exercise_choice"),
-        StepDefinition(4, "Conozcamos a nuestros clientes", "_render_dataset_view"),
-        StepDefinition(5, "Exploración y dashboard", "_render_dashboard"),
-        StepDefinition(6, "Predicción explicable", "_render_prediction"),
-        StepDefinition(7, "Comentarios 3D", "_render_comments_projection"),
-        StepDefinition(8, "Retroalimentación final", "_render_final_feedback"),
-    ]
-
     def __init__(self) -> None:
         self.container = get_container()
+        self.validator: SubmissionValidationService = self.container.submission_validation
+        self.state_machine = build_sequential_flow_state_machine()
         self._init_state()
 
     def _init_state(self) -> None:
@@ -67,87 +53,107 @@ class SequentialLearningFlow:
                 st.session_state["data_consent"] = True
                 st.rerun()
 
-    def _current_record(self):
+    def _current_record(self) -> ParticipantRecord | None:
         participant_id = st.session_state.get("participant_id")
         if not participant_id:
             return None
         return self.container.sessions.get_record(participant_id)
 
-    def _current_bundle(self):
+    def _current_bundle(self) -> DatasetBundle | None:
         selected = st.session_state.get("selected_exercise")
         if not selected:
             return None
         return self.container.catalog.get_bundle(selected)
 
+    @staticmethod
+    def _exercise_progress(
+        record: ParticipantRecord | None, exercise: str
+    ) -> ExerciseProgress | None:
+        return record.exercise_progress.get(exercise) if record else None
+
+    def _build_flow_context(self) -> FlowContext:
+        return FlowContext(
+            record=self._current_record(),
+            has_meaningful_text=self.validator.has_meaningful_learning_text,
+        )
+
+    def _save_validated_progress_text(
+        self,
+        *,
+        participant_id: str,
+        exercise: str,
+        field_name: str,
+        text: str,
+        field_label: str,
+    ) -> bool:
+        validation = self.validator.validate_learning_text(text, field_label=field_label)
+        if not validation.is_valid:
+            st.warning(validation.message)
+            return False
+        self.container.sessions.save_progress(
+            participant_id,
+            exercise,
+            {field_name: text.strip()},
+        )
+        return True
+
     def render(self) -> None:
         inject_global_styles()
-        step = self.STEPS[st.session_state["current_step"] - 1]
+        step = self.state_machine.get_step(st.session_state["current_step"])
         st.session_state["max_unlocked_step"] = max(
             st.session_state["max_unlocked_step"],
             st.session_state["current_step"],
         )
         self._render_sidebar()
-        st.progress(step.number / len(self.STEPS), text=f"Paso {step.number} de {len(self.STEPS)}")
-        render_method: Callable[[], None] = getattr(self, step.render_fn)
+        st.progress(
+            step.id / self.state_machine.total_steps,
+            text=f"Paso {step.id} de {self.state_machine.total_steps}",
+        )
+        render_method: Callable[[], None] = getattr(self, step.renderer_name)
         render_method()
-        self._render_navigation(step.number)
+        self._render_navigation(step.id)
 
     def _render_sidebar(self) -> None:
         current_step = st.session_state["current_step"]
         record = self._current_record()
         with st.sidebar:
             st.markdown("## Flujo Bankify")
-            for step in self.STEPS:
-                is_current = step.number == current_step
-                can_open = step.number <= st.session_state["max_unlocked_step"]
+            for step in self.state_machine.steps:
+                is_current = step.id == current_step
+                can_open = step.id <= st.session_state["max_unlocked_step"]
                 css = "step-chip active" if is_current else "step-chip"
-                st.markdown(f"<span class='{css}'>{step.number}. {step.title}</span>", unsafe_allow_html=True)
+                st.markdown(f"<span class='{css}'>{step.id}. {step.title}</span>", unsafe_allow_html=True)
                 if st.button(
                     "Abrir" if not is_current else "Actual",
-                    key=f"goto_step_{step.number}",
+                    key=f"goto_step_{step.id}",
                     use_container_width=True,
                     disabled=(not can_open) or is_current,
                 ):
-                    st.session_state["current_step"] = step.number
+                    st.session_state["current_step"] = step.id
                     st.rerun()
             if record:
                 st.divider()
                 st.caption(f"Sesión: {record.public_alias}")
-                st.caption(f"Ejercicio: {ExerciseOption.LABELS.get(record.selected_exercise, 'Pendiente')}")
-
-    def _can_go_next(self, step: int) -> bool:
-        record = self._current_record()
-        if step == 1:
-            return True
-        if step == 2:
-            return record is not None
-        if step == 3:
-            return bool(record and record.selected_exercise)
-        if step == 4:
-            progress = record.exercise_progress.get(record.selected_exercise) if record and record.selected_exercise else None
-            return bool(progress and progress.dataset_comment)
-        if step == 5:
-            progress = record.exercise_progress.get(record.selected_exercise) if record else None
-            return bool(progress and progress.analytics_comment)
-        if step == 6:
-            progress = record.exercise_progress.get(record.selected_exercise) if record else None
-            return bool(progress and progress.prediction_reflection)
-        if step == 7:
-            return record is not None
-        return False
+                exercise_label = (
+                    ExerciseOption.LABELS[record.selected_exercise]
+                    if record.selected_exercise
+                    else "Pendiente"
+                )
+                st.caption(f"Ejercicio: {exercise_label}")
 
     def _render_navigation(self, step: int) -> None:
         back_col, next_col = st.columns(2)
         with back_col:
             if st.button("Atrás", use_container_width=True, disabled=step == 1):
-                st.session_state["current_step"] = max(1, step - 1)
+                st.session_state["current_step"] = self.state_machine.previous_step_id(step)
                 st.rerun()
         with next_col:
-            if step == len(self.STEPS):
+            if step == self.state_machine.total_steps:
                 return
-            can_next = self._can_go_next(step)
+            next_step = self.state_machine.next_step_id(step, self._build_flow_context())
+            can_next = next_step is not None
             if st.button("Siguiente", use_container_width=True, disabled=not can_next):
-                next_step = min(len(self.STEPS), step + 1)
+                assert next_step is not None
                 st.session_state["current_step"] = next_step
                 st.session_state["max_unlocked_step"] = max(
                     st.session_state["max_unlocked_step"],
@@ -318,20 +324,23 @@ class SequentialLearningFlow:
         descriptor_df = pd.DataFrame([descriptor.to_dict() for descriptor in bundle.descriptors])
         st.markdown("### Descripción de variables")
         st.dataframe(descriptor_df[["label", "official_name", "description", "variable_type"]], use_container_width=True)
+        progress = self._exercise_progress(record, bundle.exercise)
         with st.form("dataset_comment_form"):
             comment = st.text_area(
                 "¿Qué te sugiere este dataset?",
-                value=record.exercise_progress.get(bundle.exercise).dataset_comment if record.exercise_progress.get(bundle.exercise) else "",
+                value=progress.dataset_comment if progress else "",
                 height=140,
             )
             submitted = st.form_submit_button("Guardar comentario")
         if submitted:
-            self.container.sessions.save_progress(
-                record.participant_id,
-                bundle.exercise,
-                {"dataset_comment": comment.strip()},
-            )
-            st.success("Comentario guardado sin duplicar el registro.")
+            if self._save_validated_progress_text(
+                participant_id=record.participant_id,
+                exercise=bundle.exercise,
+                field_name="dataset_comment",
+                text=comment,
+                field_label="comentario sobre el dataset",
+            ):
+                st.success("Comentario guardado sin duplicar el registro.")
 
     def _render_dashboard(self) -> None:
         record = self._current_record()
@@ -388,20 +397,23 @@ class SequentialLearningFlow:
                 ),
                 use_container_width=True,
             )
+        progress = self._exercise_progress(record, bundle.exercise)
         with st.form("analytics_comment_form"):
             comment = st.text_area(
                 "¿Qué hallazgo relevante encontraste?",
-                value=record.exercise_progress.get(bundle.exercise).analytics_comment if record.exercise_progress.get(bundle.exercise) else "",
+                value=progress.analytics_comment if progress else "",
                 height=140,
             )
             submitted = st.form_submit_button("Guardar interpretación")
         if submitted:
-            self.container.sessions.save_progress(
-                record.participant_id,
-                bundle.exercise,
-                {"analytics_comment": comment.strip()},
-            )
-            st.success("Interpretación guardada.")
+            if self._save_validated_progress_text(
+                participant_id=record.participant_id,
+                exercise=bundle.exercise,
+                field_name="analytics_comment",
+                text=comment,
+                field_label="hallazgo analítico",
+            ):
+                st.success("Interpretación guardada.")
 
     def _coerce_input(self, descriptor, value: str):
         if descriptor.variable_type == "numeric":
@@ -453,6 +465,7 @@ class SequentialLearningFlow:
 
         prediction_cache = st.session_state.get("prediction_cache")
         if prediction_cache:
+            progress = self._exercise_progress(record, bundle.exercise)
             st.metric("Resultado", prediction_cache["label"], f"{prediction_cache['probability']:.1%}")
             col1, col2 = st.columns(2)
             with col1:
@@ -476,17 +489,19 @@ class SequentialLearningFlow:
             with st.form("prediction_reflection_form"):
                 reflection = st.text_area(
                     "¿Qué entendiste de la explicación del modelo?",
-                    value=record.exercise_progress.get(bundle.exercise).prediction_reflection if record.exercise_progress.get(bundle.exercise) else "",
+                    value=progress.prediction_reflection if progress else "",
                     height=120,
                 )
                 submitted = st.form_submit_button("Guardar comprensión")
             if submitted:
-                self.container.sessions.save_progress(
-                    record.participant_id,
-                    bundle.exercise,
-                    {"prediction_reflection": reflection.strip()},
-                )
-                st.success("Reflexión guardada.")
+                if self._save_validated_progress_text(
+                    participant_id=record.participant_id,
+                    exercise=bundle.exercise,
+                    field_name="prediction_reflection",
+                    text=reflection,
+                    field_label="reflexión sobre la predicción",
+                ):
+                    st.success("Reflexión guardada.")
 
     def _render_comments_projection(self) -> None:
         record = self._current_record()
@@ -500,8 +515,8 @@ class SequentialLearningFlow:
         except RuntimeError as exc:
             st.error(str(exc))
             st.caption(
-                "La visualización 3D exige embeddings fastText de Facebook y reducción UMAP reales. "
-                "Configura el modelo local y vuelve a ejecutar."
+                "La visualización 3D requiere embeddings configurados (MiniLM o fastText de respaldo) "
+                "y reducción UMAP reales. Verifica la configuración local y vuelve a ejecutar."
             )
             return
         if not projection["points"]:
@@ -549,7 +564,8 @@ class SequentialLearningFlow:
             return
         st.title("Retroalimentación final")
         st.write("Ejercicio creado por los monitores de Ingeniería Estadística.")
-        previous = record.feedback
+        progress = self._exercise_progress(record, bundle.exercise)
+        previous = progress.feedback if progress else None
         with st.form("feedback_form"):
             rating = st.slider("Califica la experiencia", min_value=0, max_value=5, value=previous.rating if previous else 4)
             summary = st.text_area("Resumen de la experiencia", value=previous.summary if previous else "")
@@ -566,11 +582,16 @@ class SequentialLearningFlow:
                 )
             submitted = st.form_submit_button("Guardar y finalizar", type="primary")
         if submitted:
-            if not summary.strip():
-                st.warning("Escribe un resumen breve de la experiencia.")
+            validation = self.validator.validate_learning_text(
+                summary,
+                field_label="resumen de la experiencia",
+            )
+            if not validation.is_valid:
+                st.warning(validation.message)
                 return
             self.container.sessions.save_feedback(
                 record.participant_id,
+                bundle.exercise,
                 {
                     "rating": rating,
                     "summary": summary.strip(),
@@ -578,7 +599,7 @@ class SequentialLearningFlow:
                     "improvement_ideas": improvement_ideas.strip(),
                 },
             )
-            self.container.sessions.complete_activity(record.participant_id)
+            self.container.sessions.complete_activity(record.participant_id, bundle.exercise)
             st.success("Actividad finalizada. Tus comentarios ya hacen parte de la visualización anónima del ejercicio.")
 
 

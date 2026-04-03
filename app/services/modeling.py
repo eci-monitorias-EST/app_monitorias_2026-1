@@ -216,9 +216,28 @@ class PredictionService:
         self.explainer = ExplainabilityService()
         self.agent = PedagogicalExplanationAgent()
 
+    @staticmethod
+    def _positive_class_for_exercise(exercise: str) -> int:
+        positive_classes = {
+            ExerciseOption.CREDIT_APPROVAL: 1,
+            ExerciseOption.DEFAULT_RISK: 1,
+        }
+        return positive_classes[exercise]
+
+    def _positive_class_probability(self, pipeline: Pipeline, exercise: str, features: dict[str, Any]) -> float:
+        classes = list(pipeline.named_steps["classifier"].classes_)
+        positive_class = self._positive_class_for_exercise(exercise)
+        if positive_class not in classes:
+            raise ValueError(
+                f"Positive class {positive_class!r} is not available for exercise {exercise!r}."
+            )
+        positive_index = classes.index(positive_class)
+        probabilities = pipeline.predict_proba(pd.DataFrame([features]))[0]
+        return float(probabilities[positive_index])
+
     def predict(self, exercise: str, features: dict[str, Any]) -> PredictionResult:
         pipeline, bundle = self.registry.get_model(exercise)
-        probability = float(pipeline.predict_proba(pd.DataFrame([features]))[0, 1])
+        probability = self._positive_class_probability(pipeline, exercise, features)
         if exercise == ExerciseOption.CREDIT_APPROVAL:
             label = "Aprobado" if probability >= 0.5 else "Requiere revisión"
         else:
