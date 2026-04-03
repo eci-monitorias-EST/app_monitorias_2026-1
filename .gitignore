@@ -3,3 +3,4 @@ __pycache__/
 apps_script_completo.txt
 .env
 .streamlit/secrets.toml
+data/processed/app_state.json
