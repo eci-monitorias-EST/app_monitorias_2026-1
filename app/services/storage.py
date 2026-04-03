@@ -6,13 +6,15 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-from domain.models import CompletedComment, FeedbackRecord, ParticipantRecord
+from domain.models import CompletedComment, ExerciseProgress, FeedbackRecord, ParticipantRecord
 from services.configuration import load_app_config
+from services.submission_validation import SubmissionValidationService
 
 
 class JsonStateStore:
     def __init__(self, path: Path | None = None) -> None:
         config = load_app_config()
+        self._submission_validation = SubmissionValidationService()
         self.path = path or config.resolve_path(
             config.persistence.get("local_state_path", "data/processed/app_state.json")
         )
@@ -123,18 +125,10 @@ class JsonStateStore:
         comments: list[CompletedComment] = []
         for record in self._load_records().values():
             progress = record.exercise_progress.get(exercise)
-            if progress is None:
+            if progress is None or not progress.prediction_output:
                 continue
-            if progress.completed_at is None:
-                continue
-            combined = " ".join(
-                [
-                    progress.dataset_comment.strip(),
-                    progress.analytics_comment.strip(),
-                    progress.prediction_reflection.strip(),
-                ]
-            ).strip()
-            if not combined:
+            combined = self._build_projection_comment(progress)
+            if combined is None:
                 continue
             comments.append(
                 CompletedComment(
@@ -146,3 +140,17 @@ class JsonStateStore:
                 )
             )
         return comments
+
+    def _build_projection_comment(self, progress: ExerciseProgress) -> str | None:
+        combined = " ".join(
+            [
+                progress.dataset_comment.strip(),
+                progress.analytics_comment.strip(),
+                progress.prediction_reflection.strip(),
+            ]
+        ).strip()
+        if not combined:
+            return None
+        if not self._submission_validation.has_meaningful_learning_text(combined):
+            return None
+        return combined

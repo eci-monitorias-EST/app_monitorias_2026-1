@@ -72,3 +72,85 @@ def test_legacy_feedback_is_migrated_to_selected_exercise_progress(tmp_path: Pat
     assert progress.feedback is not None
     assert progress.feedback.summary == "Muy claro"
     assert progress.completed_at == "2026-04-01T00:10:00+00:00"
+
+
+def test_list_completed_comments_includes_predicted_meaningful_comments_without_completion(
+    tmp_path: Path,
+) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.upsert_participant("user-3d", {"name": "Ada"})
+    store.select_exercise(participant.participant_id, "credit_approval")
+    store.upsert_exercise_progress(
+        participant.participant_id,
+        "credit_approval",
+        {
+            "dataset_comment": "Detecté ingresos altos combinados con cuotas bajas en varios casos.",
+            "analytics_comment": "El dashboard muestra menos riesgo cuando mejora la relación ingreso-cuota.",
+            "prediction_reflection": "La predicción final coincide con ese patrón observado.",
+            "prediction_output": {"label": "Aprobado", "probability": 0.81},
+        },
+    )
+
+    comments = store.list_completed_comments("credit_approval", participant.participant_id)
+
+    assert len(comments) == 1
+    assert comments[0].participant_id == participant.participant_id
+    assert comments[0].current_user is True
+    assert "Detecté ingresos altos" in comments[0].combined_comment
+
+
+def test_list_completed_comments_excludes_records_without_prediction_output(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.upsert_participant("user-no-prediction", {"name": "Luis"})
+    store.select_exercise(participant.participant_id, "credit_approval")
+    store.upsert_exercise_progress(
+        participant.participant_id,
+        "credit_approval",
+        {
+            "dataset_comment": "Analicé perfiles con deudas previas y montos elevados.",
+            "analytics_comment": "Los casos de mayor mora se concentran en ingresos más bajos.",
+        },
+    )
+
+    comments = store.list_completed_comments("credit_approval", participant.participant_id)
+
+    assert comments == []
+
+
+def test_list_completed_comments_excludes_non_meaningful_combined_text(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.upsert_participant("user-noisy", {"name": "Noe"})
+    store.select_exercise(participant.participant_id, "credit_approval")
+    store.upsert_exercise_progress(
+        participant.participant_id,
+        "credit_approval",
+        {
+            "dataset_comment": "ok",
+            "analytics_comment": "N/A",
+            "prediction_reflection": "hola",
+            "prediction_output": {"label": "Aprobado", "probability": 0.61},
+        },
+    )
+
+    comments = store.list_completed_comments("credit_approval", participant.participant_id)
+
+    assert comments == []
+
+
+def test_list_completed_comments_only_uses_requested_exercise_progress(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.upsert_participant("user-other-exercise", {"name": "Eva"})
+    store.select_exercise(participant.participant_id, "credit_approval")
+    store.upsert_exercise_progress(
+        participant.participant_id,
+        "default_risk",
+        {
+            "dataset_comment": "Encontré atrasos altos junto con cuotas vencidas frecuentes.",
+            "prediction_reflection": "La predicción confirmó un riesgo de mora alto.",
+            "prediction_output": {"label": "Mora alta", "probability": 0.9},
+        },
+    )
+
+    comments = store.list_completed_comments("credit_approval", participant.participant_id)
+
+    assert comments == []

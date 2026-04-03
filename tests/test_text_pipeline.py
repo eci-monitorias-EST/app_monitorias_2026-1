@@ -9,7 +9,7 @@ import pytest
 
 from domain.models import CompletedComment
 from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingResult
-from services.text_pipeline import CommentAnalyticsService, TextCleaner
+from services.text_pipeline import CommentAnalyticsService, DimensionalityReducer, TextCleaner
 
 
 class _EmbedderStub:
@@ -28,6 +28,30 @@ class _ReducerStub:
     def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
         del matrix
         return np.array([[1.0, 2.0, 3.0], [3.0, 2.0, 1.0]]), "umap"
+
+
+class _SinglePointEmbedderStub:
+    def encode(self, texts: list[str]) -> EmbeddingResult:
+        del texts
+        return EmbeddingResult(
+            matrix=np.array([[0.5, 0.1, 0.9]]),
+            provider="sentence_transformers_minilm",
+        )
+
+
+class _ThreePointEmbedderStub:
+    def encode(self, texts: list[str]) -> EmbeddingResult:
+        del texts
+        return EmbeddingResult(
+            matrix=np.array(
+                [
+                    [0.1, 0.2, 0.3, 0.4],
+                    [0.4, 0.1, 0.2, 0.5],
+                    [0.3, 0.6, 0.1, 0.2],
+                ]
+            ),
+            provider="sentence_transformers_minilm",
+        )
 
 
 def test_cleaner_removes_noise() -> None:
@@ -63,6 +87,94 @@ def test_projection_uses_minilm_provider_when_configured() -> None:
 
     assert projection["embedding_provider"] == "sentence_transformers_minilm"
     assert projection["reduction_provider"] == "umap"
+
+
+def test_projection_returns_origin_for_single_point() -> None:
+    service = CommentAnalyticsService(embedder=_SinglePointEmbedderStub(), reducer=DimensionalityReducer())
+
+    projection = service.build_projection(
+        [
+            CompletedComment(
+                "a1",
+                "P-001",
+                "default_risk",
+                "Solo había un comentario disponible",
+                True,
+            )
+        ]
+    )
+
+    assert projection["reduction_provider"] == "single_point"
+    assert projection["points"] == [
+        {
+            "participant_id": "a1",
+            "public_alias": "P-001",
+            "comment": "Solo había un comentario disponible",
+            "clean_comment": "solo habia comentario disponible",
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "current_user": True,
+        }
+    ]
+
+
+def test_projection_uses_small_sample_fallback_for_three_points() -> None:
+    service = CommentAnalyticsService(embedder=_ThreePointEmbedderStub(), reducer=DimensionalityReducer())
+
+    projection = service.build_projection(
+        [
+            CompletedComment("a1", "P-001", "default_risk", "Comentario uno", True),
+            CompletedComment("a2", "P-002", "default_risk", "Comentario dos", False),
+            CompletedComment("a3", "P-003", "default_risk", "Comentario tres", False),
+        ]
+    )
+
+    assert projection["reduction_provider"] == "small_sample_fallback"
+    assert len(projection["points"]) == 3
+    for point in projection["points"]:
+        assert {"x", "y", "z"}.issubset(point)
+        assert all(np.isfinite(point[axis]) for axis in ("x", "y", "z"))
+
+
+def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPatch) -> None:
+    reducer = DimensionalityReducer()
+    matrix = np.array(
+        [
+            [0.1, 0.0, 0.2],
+            [0.0, 0.2, 0.1],
+            [0.3, 0.1, 0.0],
+            [0.2, 0.4, 0.3],
+        ]
+    )
+
+    fake_module = ModuleType("umap")
+
+    class _FakeUMAP:
+        def __init__(self, *, n_components: int, n_neighbors: int, random_state: int) -> None:
+            assert n_components == 3
+            assert n_neighbors == 3
+            assert random_state == 42
+
+        def fit_transform(self, received_matrix: np.ndarray) -> np.ndarray:
+            assert np.array_equal(received_matrix, matrix)
+            return np.array(
+                [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                ]
+            )
+
+    setattr(fake_module, "UMAP", _FakeUMAP)
+    monkeypatch.setitem(sys.modules, "umap", fake_module)
+
+    coordinates, provider = reducer.reduce(matrix)
+
+    assert provider == "umap"
+    assert coordinates.shape == (4, 3)
+    assert coordinates[3, 2] == 1.0
 
 
 def test_configurable_provider_uses_minilm_when_available(

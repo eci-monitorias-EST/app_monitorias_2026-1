@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import logging
 import re
 import unicodedata
 
 import numpy as np
+from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from domain.models import CompletedComment
 from services.configuration import load_app_config
 from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingProvider
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 SPANISH_STOPWORDS = {
@@ -31,6 +36,10 @@ class DimensionalityReducer:
     def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
         if matrix.shape[0] == 1:
             return np.array([[0.0, 0.0, 0.0]]), "single_point"
+
+        if matrix.shape[0] <= 3:
+            return self._reduce_small_sample(matrix)
+
         try:
             import umap  # type: ignore
 
@@ -42,6 +51,25 @@ class DimensionalityReducer:
             return reducer.fit_transform(matrix), "umap"
         except Exception as exc:
             raise RuntimeError("No se pudo ejecutar UMAP para la proyección 3D de comentarios.") from exc
+
+    def _reduce_small_sample(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
+        sample_count = matrix.shape[0]
+        feature_count = matrix.shape[1] if matrix.ndim > 1 else 1
+        component_count = min(3, sample_count, feature_count)
+
+        if component_count <= 0:
+            return np.zeros((sample_count, 3), dtype=float), "small_sample_fallback"
+
+        reducer = PCA(n_components=component_count, svd_solver="full")
+        reduced = reducer.fit_transform(matrix)
+        coordinates = np.zeros((sample_count, 3), dtype=float)
+        coordinates[:, :component_count] = reduced
+
+        LOGGER.info(
+            "Usando fallback determinístico para proyección 3D con %s comentarios.",
+            sample_count,
+        )
+        return coordinates, "small_sample_fallback"
 
 
 class CommentAnalyticsService:
