@@ -85,19 +85,19 @@ def build_sequential_flow_state_machine() -> SequentialFlowStateMachine:
                 4,
                 "Conozcamos a nuestros clientes",
                 "_render_dataset_view",
-                _require_progress_text("dataset_comment"),
+                _require_selected_exercise,
             ),
             FlowStep(
                 5,
                 "Exploración y dashboard",
                 "_render_dashboard",
-                _require_progress_text("analytics_comment"),
+                _require_selected_exercise,
             ),
             FlowStep(
                 6,
                 "Predicción explicable",
                 "_render_prediction",
-                _require_progress_text("prediction_reflection"),
+                _require_prediction_output,
             ),
             FlowStep(7, "Comentarios 3D", "_render_comments_projection", _require_record),
             FlowStep(8, "Retroalimentación final", "_render_final_feedback", _deny_advance),
@@ -121,12 +121,8 @@ def _require_selected_exercise(context: FlowContext) -> bool:
     return bool(context.record and context.selected_exercise)
 
 
-def _require_progress_text(field_name: str) -> StepGuard:
-    def guard(context: FlowContext) -> bool:
-        progress = context.progress
-        if progress is None:
-            return False
-        value = getattr(progress, field_name, "")
-        return context.has_meaningful_text(value)
-
-    return guard
+def _require_prediction_output(context: FlowContext) -> bool:
+    progress = context.progress
+    if progress is None:
+        return False
+    return bool(progress.prediction_output)

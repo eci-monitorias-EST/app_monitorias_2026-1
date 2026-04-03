@@ -31,31 +31,31 @@ def test_step_three_requires_selected_exercise() -> None:
     assert machine.next_step_id(3, _build_context(_build_record())) == 4
 
 
-@pytest.mark.parametrize(
-    ("step_id", "field_name"),
-    [
-        (4, "dataset_comment"),
-        (5, "analytics_comment"),
-        (6, "prediction_reflection"),
-    ],
-)
-def test_reflection_steps_require_meaningful_text_for_current_exercise(step_id: int, field_name: str) -> None:
+@pytest.mark.parametrize("step_id", [4, 5])
+def test_intermediate_steps_only_require_a_selected_exercise(step_id: int) -> None:
     machine = build_sequential_flow_state_machine()
-    blocked_record = _build_record(**{field_name: "ok"})
-    allowed_record = _build_record(**{field_name: "Respuesta con contexto suficiente para validar el avance."})
 
-    assert machine.next_step_id(step_id, _build_context(blocked_record)) is None
-    assert machine.next_step_id(step_id, _build_context(allowed_record)) == step_id + 1
+    assert machine.next_step_id(step_id, _build_context(_build_record())) == step_id + 1
 
 
-def test_reflection_guards_only_consider_progress_from_selected_exercise() -> None:
+def test_prediction_step_requires_prediction_output_for_current_exercise() -> None:
     machine = build_sequential_flow_state_machine()
-    record = _build_record(dataset_comment="Texto corto")
-    record.exercise_progress[ExerciseOption.DEFAULT_RISK].dataset_comment = (
-        "Comentario largo y útil, pero pertenece a otro ejercicio y no debe habilitar el paso."
-    )
+    blocked_record = _build_record()
+    allowed_record = _build_record(prediction_output={"label": "Aprobado", "probability": 0.82})
 
-    assert machine.next_step_id(4, _build_context(record)) is None
+    assert machine.next_step_id(6, _build_context(blocked_record)) is None
+    assert machine.next_step_id(6, _build_context(allowed_record)) == 7
+
+
+def test_prediction_guard_only_considers_current_exercise_output() -> None:
+    machine = build_sequential_flow_state_machine()
+    record = _build_record()
+    record.exercise_progress[ExerciseOption.DEFAULT_RISK].prediction_output = {
+        "label": "Baja probabilidad de mora",
+        "probability": 0.12,
+    }
+
+    assert machine.next_step_id(6, _build_context(record)) is None
 
 
 def test_invalid_step_id_raises_clear_error() -> None:
@@ -76,6 +76,7 @@ def _build_record(
     dataset_comment: str = "",
     analytics_comment: str = "",
     prediction_reflection: str = "",
+    prediction_output: dict[str, object] | None = None,
 ) -> ParticipantRecord:
     record = ParticipantRecord(
         participant_id="participant-1",
@@ -90,6 +91,7 @@ def _build_record(
             "dataset_comment": dataset_comment,
             "analytics_comment": analytics_comment,
             "prediction_reflection": prediction_reflection,
+            "prediction_output": prediction_output or {},
         },
     )
     record.upsert_progress(ExerciseOption.DEFAULT_RISK, {})

@@ -159,4 +159,11 @@ A change is only considered complete when:
 
 | Skill | Description | Location |
 | --- | --- | --- |
+| `detectar-procesos-repetitivos` | Detecta procesos repetidos y obliga a proponer una skill reusable antes de seguir improvisando. | `skills/detectar-procesos-repetitivos/SKILL.md` |
 | `detectar-falsos-positivos` | Evalúa si un hallazgo corresponde a un falso positivo, un error válido, un caso ambiguo o ruido no material. | `skills/detectar-falsos-positivos/SKILL.md` |
+
+## Local Skill Usage
+
+1. Usa `detectar-procesos-repetitivos` cuando una misma secuencia de análisis, refactor, validación o sincronización aparezca repetida varias veces en la sesión.
+2. Usa `detectar-falsos-positivos` cuando un hallazgo, clasificación, sync remoto o validación pueda estar marcando éxito/error con señales ambiguas o contradictorias.
+3. Si una skill local resuelve mejor el contexto del repo que una instrucción genérica, priorízala antes de improvisar pasos manuales repetidos.

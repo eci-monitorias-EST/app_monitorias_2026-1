@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from json import JSONDecodeError
 from typing import Any
 
 import requests
@@ -79,9 +80,38 @@ class AppsScriptSyncClient(RemoteSyncClient):
             )
             return
 
+        try:
+            response_payload = response.json()
+        except (ValueError, JSONDecodeError):
+            LOGGER.warning(
+                "Remote sync returned a non-JSON response; continuing with local-first flow.",
+                extra={
+                    "action": action,
+                    "status_code": response.status_code,
+                    "content_type": response.headers.get("Content-Type", ""),
+                },
+            )
+            return
+
+        if response_payload.get("status") != "success":
+            LOGGER.warning(
+                "Remote sync returned an application-level error; continuing with local-first flow.",
+                extra={
+                    "action": action,
+                    "status_code": response.status_code,
+                    "remote_status": response_payload.get("status"),
+                    "remote_message": response_payload.get("message", ""),
+                },
+            )
+            return
+
         LOGGER.info(
             "Remote sync completed successfully.",
-            extra={"action": action, "status_code": response.status_code},
+            extra={
+                "action": action,
+                "status_code": response.status_code,
+                "remote_mode": response_payload.get("mode", ""),
+            },
         )
 
     def sync_participant(self, participant_payload: dict[str, Any]) -> None:

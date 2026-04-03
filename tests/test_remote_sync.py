@@ -15,10 +15,27 @@ from services.remote_sync import (
 
 
 class FakeResponse:
-    def __init__(self, *, ok: bool, status_code: int, reason: str) -> None:
+    def __init__(
+        self,
+        *,
+        ok: bool,
+        status_code: int,
+        reason: str,
+        payload: dict[str, Any] | None = None,
+        json_error: Exception | None = None,
+        content_type: str = "application/json",
+    ) -> None:
         self.ok = ok
         self.status_code = status_code
         self.reason = reason
+        self._payload = payload or {"status": "success", "mode": "insert"}
+        self._json_error = json_error
+        self.headers = {"Content-Type": content_type}
+
+    def json(self) -> dict[str, Any]:
+        if self._json_error is not None:
+            raise self._json_error
+        return self._payload
 
 
 def test_build_remote_sync_client_returns_apps_script_client_when_enabled(
@@ -110,6 +127,66 @@ def test_apps_script_client_posts_expected_action_and_payload(
         "timeout": 9,
     }
     assert "Remote sync completed successfully." in caplog.text
+
+
+def test_apps_script_client_logs_warning_when_response_is_not_json(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def fake_post(*args: Any, **kwargs: Any) -> FakeResponse:
+        return FakeResponse(
+            ok=True,
+            status_code=200,
+            reason="OK",
+            json_error=ValueError("invalid json"),
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        "services.remote_sync.load_app_config",
+        lambda: AppConfig(raw={"persistence": {"request_timeout_seconds": 5}}),
+    )
+    monkeypatch.setattr("services.remote_sync.get_script_url", lambda: "https://script.google.test")
+    monkeypatch.setattr("services.remote_sync.get_form_token", lambda: "form-token")
+    monkeypatch.setattr("services.remote_sync.requests.post", fake_post)
+
+    client = AppsScriptSyncClient()
+    caplog.set_level(logging.WARNING, logger="services.remote_sync")
+
+    client.sync_progress({"participant_id": "p-001", "exercise": "credit_approval", "payload": {}})
+
+    assert "Remote sync returned a non-JSON response" in caplog.text
+    assert any(record.content_type == "text/html" for record in caplog.records)
+
+
+def test_apps_script_client_logs_warning_when_response_payload_reports_error(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def fake_post(*args: Any, **kwargs: Any) -> FakeResponse:
+        return FakeResponse(
+            ok=True,
+            status_code=200,
+            reason="OK",
+            payload={"status": "error", "message": "No autorizado"},
+        )
+
+    monkeypatch.setattr(
+        "services.remote_sync.load_app_config",
+        lambda: AppConfig(raw={"persistence": {"request_timeout_seconds": 5}}),
+    )
+    monkeypatch.setattr("services.remote_sync.get_script_url", lambda: "https://script.google.test")
+    monkeypatch.setattr("services.remote_sync.get_form_token", lambda: "form-token")
+    monkeypatch.setattr("services.remote_sync.requests.post", fake_post)
+
+    client = AppsScriptSyncClient()
+    caplog.set_level(logging.WARNING, logger="services.remote_sync")
+
+    client.sync_participant({"participant_id": "p-001"})
+
+    assert "Remote sync returned an application-level error" in caplog.text
+    assert any(record.remote_status == "error" for record in caplog.records)
+    assert any(record.remote_message == "No autorizado" for record in caplog.records)
 
 
 @pytest.mark.parametrize(
