@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from domain.models import FeedbackRecord, ParticipantRecord
+from domain.models import ExerciseProgress, FeedbackRecord, ParticipantRecord
 from services.remote_sync import RemoteSyncClient
 from services.storage import JsonStateStore
 
@@ -40,8 +40,13 @@ class SessionService:
 
     def save_progress(self, participant_id: str, exercise: str, payload: dict[str, object]) -> ParticipantRecord:
         record = self.store.upsert_exercise_progress(participant_id, exercise, payload)
+        progress = record.exercise_progress[exercise]
         self.remote_sync.sync_progress(
-            {"participant_id": participant_id, "exercise": exercise, "payload": payload}
+            {
+                "participant_id": participant_id,
+                "exercise": exercise,
+                "payload": self._build_remote_progress_payload(progress),
+            }
         )
         return record
 
@@ -67,3 +72,14 @@ class SessionService:
 
     def get_record(self, participant_id: str) -> ParticipantRecord | None:
         return self.store.get_participant_by_id(participant_id)
+
+    @staticmethod
+    def _build_remote_progress_payload(progress: ExerciseProgress) -> dict[str, object]:
+        progress_payload = asdict(progress)
+        return {
+            "dataset_comment": progress_payload["dataset_comment"],
+            "analytics_comment": progress_payload["analytics_comment"],
+            "prediction_reflection": progress_payload["prediction_reflection"],
+            "prediction_inputs": progress_payload["prediction_inputs"],
+            "prediction_output": progress_payload["prediction_output"],
+        }

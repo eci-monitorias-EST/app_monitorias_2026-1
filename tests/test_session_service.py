@@ -86,3 +86,43 @@ def test_save_feedback_updates_store_and_syncs_serialized_feedback_payload(tmp_p
         "improvement_ideas": "Más ejemplos",
         "updated_at": progress.feedback.updated_at,
     }
+
+
+def test_save_progress_syncs_consolidated_exercise_payload_instead_of_partial_payload(
+    tmp_path: Path,
+) -> None:
+    remote_sync = RecordingRemoteSyncClient()
+    store = JsonStateStore(path=tmp_path / "state.json")
+    service = SessionService(store=store, remote_sync=remote_sync)
+    participant = service.login_or_resume("student-003", {"name": "Mica"})
+
+    service.save_progress(
+        participant.participant_id,
+        "credit_approval",
+        {"dataset_comment": "Primero entendí el dataset."},
+    )
+    updated = service.save_progress(
+        participant.participant_id,
+        "credit_approval",
+        {"analytics_comment": "Después interpreté los gráficos."},
+    )
+
+    progress = updated.exercise_progress["credit_approval"]
+    progress_call = remote_sync.calls[-1]
+
+    assert progress.dataset_comment == "Primero entendí el dataset."
+    assert progress.analytics_comment == "Después interpreté los gráficos."
+    assert progress_call == (
+        "progress",
+        {
+            "participant_id": participant.participant_id,
+            "exercise": "credit_approval",
+            "payload": {
+                "dataset_comment": "Primero entendí el dataset.",
+                "analytics_comment": "Después interpreté los gráficos.",
+                "prediction_reflection": "",
+                "prediction_inputs": {},
+                "prediction_output": {},
+            },
+        },
+    )

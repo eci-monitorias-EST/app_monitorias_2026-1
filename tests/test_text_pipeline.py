@@ -54,6 +54,22 @@ class _ThreePointEmbedderStub:
         )
 
 
+class _FourPointEmbedderStub:
+    def encode(self, texts: list[str]) -> EmbeddingResult:
+        del texts
+        return EmbeddingResult(
+            matrix=np.array(
+                [
+                    [0.1, 0.2, 0.3, 0.4],
+                    [0.4, 0.1, 0.2, 0.5],
+                    [0.3, 0.6, 0.1, 0.2],
+                    [0.5, 0.4, 0.2, 0.1],
+                ]
+            ),
+            provider="sentence_transformers_minilm",
+        )
+
+
 def test_cleaner_removes_noise() -> None:
     cleaner = TextCleaner()
     cleaned = cleaner.clean("¡Visité https://bankify.test y EL modelo fue MUY claro!")
@@ -137,6 +153,25 @@ def test_projection_uses_small_sample_fallback_for_three_points() -> None:
         assert all(np.isfinite(point[axis]) for axis in ("x", "y", "z"))
 
 
+def test_projection_uses_small_sample_fallback_for_four_points() -> None:
+    service = CommentAnalyticsService(embedder=_FourPointEmbedderStub(), reducer=DimensionalityReducer())
+
+    projection = service.build_projection(
+        [
+            CompletedComment("a1", "P-001", "default_risk", "Comentario uno", True),
+            CompletedComment("a2", "P-002", "default_risk", "Comentario dos", False),
+            CompletedComment("a3", "P-003", "default_risk", "Comentario tres", False),
+            CompletedComment("a4", "P-004", "default_risk", "Comentario cuatro", False),
+        ]
+    )
+
+    assert projection["reduction_provider"] == "small_sample_fallback"
+    assert len(projection["points"]) == 4
+    for point in projection["points"]:
+        assert {"x", "y", "z"}.issubset(point)
+        assert all(np.isfinite(point[axis]) for axis in ("x", "y", "z"))
+
+
 def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPatch) -> None:
     reducer = DimensionalityReducer()
     matrix = np.array(
@@ -145,6 +180,7 @@ def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPat
             [0.0, 0.2, 0.1],
             [0.3, 0.1, 0.0],
             [0.2, 0.4, 0.3],
+            [0.4, 0.3, 0.2],
         ]
     )
 
@@ -153,7 +189,7 @@ def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPat
     class _FakeUMAP:
         def __init__(self, *, n_components: int, n_neighbors: int, random_state: int) -> None:
             assert n_components == 3
-            assert n_neighbors == 3
+            assert n_neighbors == 4
             assert random_state == 42
 
         def fit_transform(self, received_matrix: np.ndarray) -> np.ndarray:
@@ -164,6 +200,7 @@ def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPat
                     [0.0, 1.0, 0.0],
                     [0.0, 0.0, 1.0],
                     [1.0, 1.0, 1.0],
+                    [0.5, 0.5, 0.5],
                 ]
             )
 
@@ -173,8 +210,9 @@ def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPat
     coordinates, provider = reducer.reduce(matrix)
 
     assert provider == "umap"
-    assert coordinates.shape == (4, 3)
+    assert coordinates.shape == (5, 3)
     assert coordinates[3, 2] == 1.0
+    assert coordinates[4, 0] == 0.5
 
 
 def test_configurable_provider_uses_minilm_when_available(

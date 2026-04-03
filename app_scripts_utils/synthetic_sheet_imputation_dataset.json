@@ -1,0 +1,196 @@
+{
+  "participants": [
+    {
+      "scenario_id": "default-risk-001",
+      "exercise": "default_risk",
+      "dataset_row_index": 0,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Camila Rivera",
+        "sexo": "F",
+        "colegio": "Instituto Aurora",
+        "edad": 16,
+        "grado": "11",
+        "interes_carrera": "Ingeniería de sistemas",
+        "matematicas_avanzadas": "Sí"
+      },
+      "dataset_comment": "En este caso ficticio vi atrasos recientes y pagos bajos frente a la factura, así que esperaría mayor riesgo de mora.",
+      "analytics_comment": "Relacioné PAY_0, PAY_2 y PAY_AMT1 con la probabilidad final porque muestran presión de pago en el corto plazo.",
+      "prediction_reflection": "La explicación me ayudó a entender que no alcanza con mirar una sola variable; el comportamiento de pago reciente pesa bastante.",
+      "feedback": {
+        "rating": 4,
+        "summary": "El ejercicio sintético deja claro cómo leer señales de mora con variables financieras.",
+        "missing_topics": "Me gustaría una comparación explícita entre clientes con igual cupo pero distinta mora reciente.",
+        "improvement_ideas": "Sumaría una tabla corta que traduzca cada código PAY a lenguaje cotidiano."
+      }
+    },
+    {
+      "scenario_id": "default-risk-002",
+      "exercise": "default_risk",
+      "dataset_row_index": 1,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Miguel Torres",
+        "sexo": "M",
+        "colegio": "Colegio Horizonte",
+        "edad": 17,
+        "grado": "10",
+        "interes_carrera": "Economía",
+        "matematicas_avanzadas": "No"
+      },
+      "dataset_comment": "Este registro ficticio parece más estable porque el cliente paga mejor y no muestra tantos atrasos consecutivos.",
+      "analytics_comment": "Interpreté que BILL_AMT1 y PAY_AMT1 deben leerse juntos: no es lo mismo deber mucho que deber mucho y además pagar poco.",
+      "prediction_reflection": "Aprendí que el modelo combina señales de deuda y conducta de pago; la estabilidad aparece cuando ambas van en la misma dirección.",
+      "feedback": {
+        "rating": 5,
+        "summary": "La práctica sintética me sirvió para conectar variables numéricas con riesgo crediticio realista.",
+        "missing_topics": "Faltó una pista sobre cómo cambia la lectura del riesgo cuando la edad es baja.",
+        "improvement_ideas": "Agregar un mini glosario de columnas ayudaría a interpretar más rápido."
+      }
+    },
+    {
+      "scenario_id": "default-risk-003",
+      "exercise": "default_risk",
+      "dataset_row_index": 2,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Valentina Luna",
+        "sexo": "F",
+        "colegio": "Liceo Delta",
+        "edad": 16,
+        "grado": "11",
+        "interes_carrera": "Ciencia de datos",
+        "matematicas_avanzadas": "Sí"
+      },
+      "dataset_comment": "En esta observación ficticia el historial reciente sugiere tensión financiera, aunque el cupo de crédito no sea el más alto.",
+      "analytics_comment": "Me enfoqué en PAY_0, PAY_2 y AGE porque el caso muestra que el contexto del cliente modula el riesgo, no solo el monto adeudado.",
+      "prediction_reflection": "Entendí que el modelo aprende patrones históricos y por eso una combinación de atrasos y pagos pequeños puede pesar más que el cupo total.",
+      "feedback": {
+        "rating": 4,
+        "summary": "Buen caso sintético para discutir cómo varias variables juntas elevan la probabilidad de mora.",
+        "missing_topics": "Quedó pendiente ver un ejemplo con igual mora pero mejor historial de pagos recientes.",
+        "improvement_ideas": "Mejoraría con un resaltado visual de las tres variables más influyentes."
+      }
+    },
+    {
+      "scenario_id": "default-risk-004",
+      "exercise": "default_risk",
+      "dataset_row_index": 3,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Sofía Méndez",
+        "sexo": "F",
+        "colegio": "Instituto Boreal",
+        "edad": 17,
+        "grado": "10",
+        "interes_carrera": "Administración",
+        "matematicas_avanzadas": "No"
+      },
+      "dataset_comment": "Este perfil ficticio da pie para discutir cuándo una deuda alta todavía puede ser manejable si la conducta de pago acompaña.",
+      "analytics_comment": "Analicé la relación entre las facturas y el pago reciente para separar monto elevado de incumplimiento real.",
+      "prediction_reflection": "La explicación me dejó claro que el modelo no castiga solo por tener deuda, sino por la combinación entre deuda y atraso.",
+      "feedback": {
+        "rating": 5,
+        "summary": "Caso sintético útil para comparar riesgo financiero con comportamiento observado.",
+        "missing_topics": "Hubiera estado bueno ver un contraste con educación o estado civil para discutir variables demográficas.",
+        "improvement_ideas": "Incluir una comparación lado a lado con otro cliente ficticio ayudaría mucho."
+      }
+    },
+    {
+      "scenario_id": "credit-approval-001",
+      "exercise": "credit_approval",
+      "dataset_row_index": 0,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Tomás Vega",
+        "sexo": "M",
+        "colegio": "Colegio Newton",
+        "edad": 17,
+        "grado": "11",
+        "interes_carrera": "Ingeniería industrial",
+        "matematicas_avanzadas": "Sí"
+      },
+      "dataset_comment": "En este caso sintético observé que la duración del crédito y el historial previo pueden empujar al modelo hacia una revisión más cuidadosa.",
+      "analytics_comment": "La lectura principal fue que credit_amount y duration_month deben contextualizarse con employment_since y savings_account.",
+      "prediction_reflection": "Me quedó claro que aprobar crédito no depende solo del ingreso o del monto, sino de cómo encaja todo el perfil con casos históricos.",
+      "feedback": {
+        "rating": 4,
+        "summary": "El escenario sintético muestra bien cómo combinar variables personales y financieras en aprobación de crédito.",
+        "missing_topics": "Faltó explicar mejor el impacto del propósito del crédito.",
+        "improvement_ideas": "Una leyenda para los códigos categóricos del dataset haría más rápida la interpretación."
+      }
+    },
+    {
+      "scenario_id": "credit-approval-002",
+      "exercise": "credit_approval",
+      "dataset_row_index": 1,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Juliana Pardo",
+        "sexo": "F",
+        "colegio": "Instituto Prisma",
+        "edad": 16,
+        "grado": "11",
+        "interes_carrera": "Finanzas",
+        "matematicas_avanzadas": "Sí"
+      },
+      "dataset_comment": "Este registro sintético parece más sólido porque combina mejor historial con señales de capacidad de pago relativamente estables.",
+      "analytics_comment": "Interpreto que housing, savings_account y existing_credits_bank ayudan a leer si el solicitante tiene respaldo o ya está muy comprometido.",
+      "prediction_reflection": "La predicción me enseñó que el modelo busca consistencia entre varias señales y no una regla única para aprobar o rechazar.",
+      "feedback": {
+        "rating": 5,
+        "summary": "Muy buen ejemplo sintético para explicar consistencia entre historial, ahorro y monto solicitado.",
+        "missing_topics": "Quisiera ver cómo cambiaría el resultado si solo aumentara la duración del crédito.",
+        "improvement_ideas": "Un slider comparativo entre duración corta y larga sería excelente."
+      }
+    },
+    {
+      "scenario_id": "credit-approval-003",
+      "exercise": "credit_approval",
+      "dataset_row_index": 2,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Nicolás Castaño",
+        "sexo": "M",
+        "colegio": "Liceo Vector",
+        "edad": 17,
+        "grado": "10",
+        "interes_carrera": "Analítica",
+        "matematicas_avanzadas": "No"
+      },
+      "dataset_comment": "En este perfil sintético el historial y la cuenta corriente parecen tensionar la decisión, aunque no todo el caso sea negativo.",
+      "analytics_comment": "Me fijé en status_checking_account y credit_history porque son pistas tempranas sobre comportamiento financiero previo.",
+      "prediction_reflection": "Aprendí que un crédito puede requerir revisión incluso si algunas variables lucen razonables, porque el modelo pondera antecedentes y contexto a la vez.",
+      "feedback": {
+        "rating": 4,
+        "summary": "Caso sintético útil para hablar de decisiones fronterizas en aprobación de crédito.",
+        "missing_topics": "Hubiera sumado una explicación más directa del rol de property y job.",
+        "improvement_ideas": "Un panel con top variables positivas y negativas haría más clara la decisión."
+      }
+    },
+    {
+      "scenario_id": "credit-approval-004",
+      "exercise": "credit_approval",
+      "dataset_row_index": 3,
+      "profile": {
+        "Dia": "2026-04-01",
+        "nombre": "Laura Salcedo",
+        "sexo": "F",
+        "colegio": "Colegio Origen",
+        "edad": 16,
+        "grado": "10",
+        "interes_carrera": "Economía",
+        "matematicas_avanzadas": "No"
+      },
+      "dataset_comment": "Este caso ficticio permite discutir cómo un monto y una duración exigentes pueden cambiar la lectura del perfil solicitante.",
+      "analytics_comment": "Relacioné purpose, duration_month y installment_rate con la capacidad de sostener el crédito sin elevar demasiado el riesgo.",
+      "prediction_reflection": "La salida me mostró que aprobar un crédito es una decisión multivariable donde algunos factores compensan y otros tensionan el resultado.",
+      "feedback": {
+        "rating": 5,
+        "summary": "El ejemplo sintético está bueno para pensar trade-offs entre monto, plazo y estabilidad del perfil.",
+        "missing_topics": "Quisiera una explicación más aterrizada sobre other_installment_plans.",
+        "improvement_ideas": "Agregar una nota sobre compensaciones entre variables sería muy útil."
+      }
+    }
+  ]
+}

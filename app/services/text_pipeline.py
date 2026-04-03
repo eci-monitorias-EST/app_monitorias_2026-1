@@ -37,7 +37,7 @@ class DimensionalityReducer:
         if matrix.shape[0] == 1:
             return np.array([[0.0, 0.0, 0.0]]), "single_point"
 
-        if matrix.shape[0] <= 3:
+        if matrix.shape[0] <= 4:
             return self._reduce_small_sample(matrix)
 
         try:
@@ -49,8 +49,13 @@ class DimensionalityReducer:
                 random_state=42,
             )
             return reducer.fit_transform(matrix), "umap"
-        except Exception as exc:
-            raise RuntimeError("No se pudo ejecutar UMAP para la proyección 3D de comentarios.") from exc
+        except Exception:
+            LOGGER.warning(
+                "UMAP falló para %s comentarios; usando fallback determinístico.",
+                matrix.shape[0],
+                exc_info=True,
+            )
+            return self._reduce_small_sample(matrix)
 
     def _reduce_small_sample(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
         sample_count = matrix.shape[0]

@@ -19,3 +19,4 @@ Skills locales del proyecto para guiar al agente en patrones específicos del re
 
 - `detectar-procesos-repetitivos`: para decidir cuándo conviene crear nuevas skills.
 - `detectar-falsos-positivos`: cuando una skill trate validaciones o clasificaciones susceptibles a señales ambiguas.
+- `imputacion-sintetica-sheet-3d`: cuando el patrón reusable sea poblar Sheets con datos sintéticos, visualizar 3D fuera de Streamlit y borrar por lote de prueba.
