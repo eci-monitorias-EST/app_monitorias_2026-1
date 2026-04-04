@@ -132,7 +132,7 @@ def derive_max_unlocked_step(record: ParticipantRecord | None, has_meaningful_te
         return 5
     if not progress.prediction_output or not has_meaningful_text(progress.prediction_reflection):
         return 6
-    return 8 if progress.feedback is not None else 7
+    return 8
 
 
 def _allow_anything(_: FlowContext) -> bool:

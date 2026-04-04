@@ -291,6 +291,62 @@ def test_build_projection_comments_joins_session_alias_and_filters_exercise() ->
     assert comments[0].combined_comment == "uno dos tres"
 
 
+def test_build_projection_comments_prefers_comment_events_and_preserves_exercise_split() -> None:
+    batch_payload = {
+        "comment_events": [
+            {
+                "participant_id": "p-1",
+                "public_alias": "TEST-001",
+                "exercise": "credit_approval",
+                "comment_type": "dataset_comment",
+                "comment_text": "Comentario dataset crédito",
+                "clean_comment": "comentario dataset credito",
+                "comment_hash": "hash-1",
+                "updated_at": "2026-04-03T10:00:00+00:00",
+            },
+            {
+                "participant_id": "p-1",
+                "public_alias": "TEST-001",
+                "exercise": "credit_approval",
+                "comment_type": "analytics_comment",
+                "comment_text": "Comentario analytics crédito",
+                "clean_comment": "comentario analytics credito",
+                "comment_hash": "hash-2",
+                "updated_at": "2026-04-03T10:00:00+00:00",
+            },
+            {
+                "participant_id": "p-2",
+                "public_alias": "TEST-002",
+                "exercise": "default_risk",
+                "comment_type": "dataset_comment",
+                "comment_text": "Comentario dataset mora",
+                "clean_comment": "comentario dataset mora",
+                "comment_hash": "hash-3",
+                "updated_at": "2026-04-03T10:00:00+00:00",
+            },
+        ],
+        "respuestas": [
+            {
+                "participant_id": "p-1",
+                "exercise": "credit_approval",
+                "dataset_comment": "legacy dataset",
+                "analytics_comment": "legacy analytics",
+                "prediction_reflection": "legacy reflection",
+            }
+        ],
+    }
+
+    comments = build_projection_comments(batch_payload, exercise="credit_approval")
+
+    assert len(comments) == 2
+    assert {comment.comment_type for comment in comments} == {"dataset_comment", "analytics_comment"}
+    assert all(comment.exercise == "credit_approval" for comment in comments)
+    assert {comment.combined_comment for comment in comments} == {
+        "Comentario dataset crédito",
+        "Comentario analytics crédito",
+    }
+
+
 def test_build_delete_batch_payload_requires_confirmation_only_for_real_delete() -> None:
     dry_run_payload = build_delete_batch_payload("batch-123", dry_run=True)
     execute_payload = build_delete_batch_payload("batch-123", dry_run=False)
@@ -347,6 +403,14 @@ def test_chunk_synthetic_batch_and_build_seed_batch_payload_keep_traceability() 
     }
     assert payload["records"][0]["progress_payload"]["dataset_comment"].startswith(
         "[DATOS_SINTETICOS|batch=batch-456]"
+    )
+    assert len(payload["records"][0]["comment_events"]) == 3
+    assert {
+        row["comment_type"] for row in payload["records"][0]["comment_events"]
+    } == {"dataset_comment", "analytics_comment", "prediction_reflection"}
+    assert all(
+        row["test_batch_id"] == "batch-456"
+        for row in payload["records"][0]["comment_events"]
     )
 
 
@@ -426,6 +490,7 @@ def test_run_seed_uses_batch_endpoint_with_configurable_chunks(monkeypatch: Any)
                     "status": "success",
                     "sesiones": [{} for _ in range(batch.total_records)],
                     "respuestas": [{} for _ in range(batch.total_records)],
+                    "comment_events": [{} for _ in range(batch.total_records * 3)],
                 }
             raise AssertionError(f"Acción inesperada: {action}")
 
@@ -518,11 +583,12 @@ def test_verify_seed_batch_visibility_retries_with_short_backoff(monkeypatch: An
             assert action == "get_test_batch"
             verification_attempts["count"] += 1
             if verification_attempts["count"] <= 2:
-                return {"status": "success", "sesiones": [], "respuestas": []}
+                return {"status": "success", "sesiones": [], "respuestas": [], "comment_events": []}
             return {
                 "status": "success",
                 "sesiones": [{} for _ in range(batch.total_records)],
                 "respuestas": [{}],
+                "comment_events": [{} for _ in range(3)],
             }
 
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleep_calls.append(seconds))
@@ -554,6 +620,7 @@ def test_verify_delete_batch_visibility_retries_until_all_sheets_are_empty(monke
             "sesiones": [{}],
             "respuestas": [],
             "historial_comentarios": [],
+            "comment_events": [{}],
             "feedback": [],
             "control": [{}],
         },
@@ -562,6 +629,7 @@ def test_verify_delete_batch_visibility_retries_until_all_sheets_are_empty(monke
             "sesiones": [],
             "respuestas": [],
             "historial_comentarios": [],
+            "comment_events": [],
             "feedback": [],
             "control": [],
         },

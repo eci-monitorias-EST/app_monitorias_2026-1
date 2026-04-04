@@ -14,19 +14,37 @@ class SessionService:
         self.store = store
         self.remote_sync = remote_sync
 
-    def login_or_resume(self, access_key: str, profile: dict[str, object]) -> ParticipantRecord:
-        record = self.store.upsert_participant(access_key=access_key, profile=profile)
+    def start_session(self, profile: dict[str, object]) -> ParticipantRecord:
+        record = self.store.create_participant(profile=profile)
         self.remote_sync.sync_participant(
             {
                 "participant_id": record.participant_id,
                 "public_alias": record.public_alias,
+                "access_code_display": record.access_code_display,
+                "access_code_hash": record.access_code_hash,
                 "profile": record.profile,
             }
         )
         return record
 
-    def recover(self, access_key: str) -> ParticipantRecord | None:
-        return self.store.get_participant(access_key)
+    def login_or_resume(self, access_key: str, profile: dict[str, object]) -> ParticipantRecord:
+        existing = self.recover(access_key)
+        if existing is not None:
+            updated = self.store.update_profile(existing.participant_id, profile)
+            self.remote_sync.sync_participant(
+                {
+                    "participant_id": updated.participant_id,
+                    "public_alias": updated.public_alias,
+                    "access_code_display": updated.access_code_display,
+                    "access_code_hash": updated.access_code_hash,
+                    "profile": updated.profile,
+                }
+            )
+            return updated
+        return self.start_session(profile)
+
+    def recover(self, access_code: str) -> ParticipantRecord | None:
+        return self.store.get_participant(access_code)
 
     def select_exercise(self, participant_id: str, exercise: str) -> ParticipantRecord:
         record = self.store.select_exercise(participant_id, exercise)

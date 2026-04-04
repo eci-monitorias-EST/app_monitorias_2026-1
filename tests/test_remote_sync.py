@@ -144,6 +144,12 @@ def test_apps_script_client_posts_expected_action_and_payload(
             [{"participant_id": "p-001", "comment_hash": "hash-1"}],
         ),
         (
+            "query_projection_comments",
+            "query_projection_comments",
+            {"exercise": "credit_approval", "limit_rows": 200},
+            [{"participant_id": "p-001", "combined_comment": "comentario legado"}],
+        ),
+        (
             "query_embeddings_cache",
             "query_embeddings_cache",
             {

@@ -38,7 +38,7 @@ class SequentialLearningFlow:
         st.session_state.setdefault("current_step", 1)
         st.session_state.setdefault("max_unlocked_step", 1)
         st.session_state.setdefault("participant_id", None)
-        st.session_state.setdefault("access_key", "")
+        st.session_state.setdefault("access_code", "")
         st.session_state.setdefault("selected_exercise", None)
         st.session_state.setdefault("exercise_step_state", {})
         st.session_state.setdefault("prediction_cache", None)
@@ -132,10 +132,16 @@ class SequentialLearningFlow:
                 record,
                 self.validator.has_meaningful_learning_text,
             )
+            requested_step = int(st.session_state.get("current_step", base_state.current_step))
             saved_current_step = int(
                 exercise_step_state.get(exercise, {}).get("current_step", base_state.current_step)
             )
-            current_step = max(4, min(saved_current_step, base_state.max_unlocked_step))
+            if requested_step <= 3:
+                current_step = requested_step
+            elif saved_current_step <= 3:
+                current_step = saved_current_step
+            else:
+                current_step = min(saved_current_step, base_state.max_unlocked_step)
             exercise_step_state[exercise] = {"current_step": current_step}
             st.session_state["current_step"] = current_step
             st.session_state["max_unlocked_step"] = base_state.max_unlocked_step
@@ -203,6 +209,8 @@ class SequentialLearningFlow:
             if record:
                 st.divider()
                 st.caption(f"Sesión: {record.public_alias}")
+                if record.access_code_display:
+                    st.caption(f"Código de acceso: {record.access_code_display}")
                 exercise_label = (
                     ExerciseOption.LABELS[record.selected_exercise]
                     if record.selected_exercise
@@ -258,15 +266,22 @@ class SequentialLearningFlow:
                     unsafe_allow_html=True,
                 )
         st.info(
-            "El flujo guarda avances por sesión. Si pierdes conexión, puedes retomar ingresando el mismo identificador de acceso."
+            "El sistema genera automáticamente un código de acceso por sesión. Guárdalo: es el mecanismo oficial para retomar tu avance."
         )
 
     def _render_data_collection(self) -> None:
         record = self._current_record()
         st.title("Recolección de datos y recuperación de sesión")
-        st.write("Usa un identificador estable para entrar o retomar tu progreso sin duplicar registros.")
+        st.write(
+            "Crea una nueva sesión y el sistema te entregará un código de acceso único. "
+            "Para reanudar, ingresa ese código."
+        )
         if record:
             st.success(f"Sesión recuperada: {record.public_alias}")
+            if record.access_code_display:
+                st.markdown("#### Código de acceso de esta sesión")
+                st.code(record.access_code_display)
+                st.caption("Guárdalo. Este código es la forma oficial de reanudar la sesión.")
             st.json(record.profile)
             return
         if st.session_state["data_consent"] is not True:
@@ -279,11 +294,27 @@ class SequentialLearningFlow:
             else:
                 st.info("Debes autorizar el tratamiento de datos para habilitar el formulario.")
             return
+        with st.expander("Reanudar una sesión existente", expanded=True):
+            with st.form("participant_recovery_form"):
+                access_code = st.text_input(
+                    "Código de acceso",
+                    help="Ingresa el código que recibiste al crear la sesión.",
+                )
+                recovery_submitted = st.form_submit_button("Reanudar sesión")
+            if recovery_submitted:
+                recovered = self.container.sessions.recover(access_code)
+                if recovered is None:
+                    st.error("No encontramos una sesión con ese código. Verifica el código e intentá de nuevo.")
+                    return
+                st.session_state["participant_id"] = recovered.participant_id
+                st.session_state["access_code"] = recovered.access_code_display
+                if recovered.selected_exercise:
+                    st.session_state["selected_exercise"] = recovered.selected_exercise
+                st.success(f"Sesión recuperada: {recovered.public_alias}")
+                st.rerun()
+        st.divider()
+        st.markdown("### Crear una nueva sesión")
         with st.form("participant_login_form"):
-            access_key = st.text_input(
-                "Identificador de acceso",
-                help="Usa tu correo institucional o un código estable y único.",
-            )
             nombre = st.text_input("Nombre")
             sexo = st.selectbox("Sexo", SEX_OPTIONS)
             colegio = st.text_input("Colegio")
@@ -291,11 +322,10 @@ class SequentialLearningFlow:
             grado = st.selectbox("Grado o nivel", GRADE_OPTIONS)
             interes_carrera = st.text_area("¿Qué te llamó la atención de Ingeniería Estadística?")
             matematicas_avanzadas = st.text_area("¿Qué es lo más avanzado de matemáticas que has visto?")
-            submitted = st.form_submit_button("Iniciar o retomar sesión", type="primary")
+            submitted = st.form_submit_button("Crear sesión y generar código", type="primary")
         if submitted:
             if not all(
                 [
-                    access_key.strip(),
                     nombre.strip(),
                     sexo.strip(),
                     colegio.strip(),
@@ -311,8 +341,7 @@ class SequentialLearningFlow:
             except ValueError as exc:
                 st.warning(str(exc))
                 return
-            record = self.container.sessions.login_or_resume(
-                access_key=access_key,
+            record = self.container.sessions.start_session(
                 profile={
                     "Dia": datetime.now().strftime("%Y-%m-%d"),
                     "nombre": nombre.strip(),
@@ -325,10 +354,12 @@ class SequentialLearningFlow:
                 },
             )
             st.session_state["participant_id"] = record.participant_id
-            st.session_state["access_key"] = access_key
+            st.session_state["access_code"] = record.access_code_display
             if record.selected_exercise:
                 st.session_state["selected_exercise"] = record.selected_exercise
-            st.success(f"Sesión activa con alias anónimo {record.public_alias}.")
+            st.success(
+                f"Sesión activa con alias anónimo {record.public_alias}. Guarda tu código para retomarla después."
+            )
             st.rerun()
 
     def _render_exercise_choice(self) -> None:

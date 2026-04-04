@@ -69,13 +69,18 @@ class FeedbackRecord:
 @dataclass
 class ParticipantRecord:
     participant_id: str
-    access_key_hash: str
+    access_code_hash: str
     public_alias: str
     profile: dict[str, Any]
+    access_code_display: str = ""
     selected_exercise: str | None = None
     exercise_progress: dict[str, ExerciseProgress] = field(default_factory=dict)
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
+
+    @property
+    def access_key_hash(self) -> str:
+        return self.access_code_hash
 
     def upsert_progress(self, exercise: str, payload: dict[str, Any]) -> ExerciseProgress:
         progress = self.exercise_progress.get(exercise)
@@ -127,9 +132,10 @@ class ParticipantRecord:
                 exercise_progress.completed_at = completed_at
         return cls(
             participant_id=payload["participant_id"],
-            access_key_hash=payload["access_key_hash"],
+            access_code_hash=payload.get("access_code_hash", payload.get("access_key_hash", "")),
             public_alias=payload["public_alias"],
             profile=payload.get("profile", {}),
+            access_code_display=payload.get("access_code_display", ""),
             selected_exercise=payload.get("selected_exercise"),
             exercise_progress=progress,
             created_at=payload.get("created_at", utc_now_iso()),

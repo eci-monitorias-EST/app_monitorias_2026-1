@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 
 from domain.models import CompletedComment, PredictionResult
+from services.comment_events import COMMENT_TYPE_LABELS, build_comment_event_rows_from_payload
 
 
 LOGGER = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class SyntheticSeedRecord:
     exercise: str
     profile: dict[str, Any]
     progress_payload: dict[str, Any]
+    comment_event_rows: list[dict[str, Any]]
     feedback_payload: dict[str, Any]
     traceability_payload: dict[str, Any]
 
@@ -142,6 +144,25 @@ class SyntheticBatchBuilder:
                 "test_batch_id": test_batch_id,
                 "data_origin": self.origin_label,
             }
+            progress_payload = {
+                "dataset_comment": _tag_text(scenario.dataset_comment, test_batch_id),
+                "analytics_comment": _tag_text(scenario.analytics_comment, test_batch_id),
+                "prediction_reflection": _tag_text(
+                    scenario.prediction_reflection,
+                    test_batch_id,
+                ),
+                "prediction_inputs": prediction_inputs,
+                "prediction_output": prediction_output,
+            }
+            comment_event_rows = build_comment_event_rows_from_payload(
+                participant_id=participant_id,
+                public_alias=public_alias,
+                exercise=scenario.exercise,
+                progress_payload=progress_payload,
+                is_test_data=True,
+                test_batch_id=test_batch_id,
+                data_origin=self.origin_label,
+            )
 
             records.append(
                 SyntheticSeedRecord(
@@ -150,16 +171,8 @@ class SyntheticBatchBuilder:
                     public_alias=public_alias,
                     exercise=scenario.exercise,
                     profile=_build_synthetic_profile(scenario.profile),
-                    progress_payload={
-                        "dataset_comment": _tag_text(scenario.dataset_comment, test_batch_id),
-                        "analytics_comment": _tag_text(scenario.analytics_comment, test_batch_id),
-                        "prediction_reflection": _tag_text(
-                            scenario.prediction_reflection,
-                            test_batch_id,
-                        ),
-                        "prediction_inputs": prediction_inputs,
-                        "prediction_output": prediction_output,
-                    },
+                    progress_payload=progress_payload,
+                    comment_event_rows=comment_event_rows,
                     feedback_payload={
                         "rating": scenario.feedback.rating,
                         "summary": _tag_text(scenario.feedback.summary, test_batch_id),
@@ -252,6 +265,10 @@ def build_projection_comments(
     *,
     exercise: str,
 ) -> list[CompletedComment]:
+    comment_events = _build_projection_comments_from_comment_events(batch_payload, exercise=exercise)
+    if comment_events:
+        return comment_events
+
     sessions_by_participant = {
         str(row.get("participant_id", "")).strip(): row
         for row in batch_payload.get("sesiones", [])
@@ -285,6 +302,40 @@ def build_projection_comments(
     return comments
 
 
+def _build_projection_comments_from_comment_events(
+    batch_payload: dict[str, Any],
+    *,
+    exercise: str,
+) -> list[CompletedComment]:
+    comments: list[CompletedComment] = []
+    for row in batch_payload.get("comment_events", []):
+        if str(row.get("exercise", "")).strip() != exercise:
+            continue
+
+        comment_text = str(row.get("comment_text", "")).strip()
+        comment_type = str(row.get("comment_type", "")).strip()
+        if not comment_text or not comment_type:
+            continue
+
+        participant_id = str(row.get("participant_id", "")).strip()
+        comments.append(
+            CompletedComment(
+                participant_id=participant_id,
+                public_alias=str(row.get("public_alias", participant_id)).strip() or participant_id,
+                exercise=exercise,
+                combined_comment=comment_text,
+                current_user=False,
+                clean_comment=str(row.get("clean_comment", "")).strip(),
+                comment_hash=str(row.get("comment_hash", "")).strip(),
+                source_updated_at=str(row.get("updated_at", "")).strip(),
+                source_sheet_row_number=int(row.get("source_sheet_row_number", 0) or 0),
+                comment_type=comment_type,
+                comment_type_label=COMMENT_TYPE_LABELS.get(comment_type, comment_type),
+            )
+        )
+    return comments
+
+
 def export_projection_html(
     projection: dict[str, Any],
     *,
@@ -303,10 +354,13 @@ def export_projection_html(
         x="x",
         y="y",
         z="z",
-        color="public_alias",
+        color="comment_type_label",
+        symbol="current_user",
         hover_name="public_alias",
         hover_data={
             "participant_id": True,
+            "comment_type_label": True,
+            "current_user": True,
             "comment": True,
             "clean_comment": True,
             "x": ":.3f",
@@ -314,15 +368,33 @@ def export_projection_html(
             "z": ":.3f",
         },
         title=title,
+        category_orders={
+            "comment_type_label": [COMMENT_TYPE_LABELS[key] for key in COMMENT_TYPE_LABELS],
+            "current_user": [True, False],
+        },
+        color_discrete_map={
+            COMMENT_TYPE_LABELS["dataset_comment"]: "#60a5fa",
+            COMMENT_TYPE_LABELS["analytics_comment"]: "#34d399",
+            COMMENT_TYPE_LABELS["prediction_reflection"]: "#f59e0b",
+        },
+        symbol_map={True: "diamond", False: "circle"},
     )
-    figure.update_traces(marker={"size": 6, "opacity": 0.85})
+    figure.update_traces(
+        marker={"size": 6, "opacity": 0.85},
+        selector={"mode": "markers"},
+    )
+    for trace in figure.data:
+        is_current_user = str(trace.name).endswith(", True") or str(trace.name).startswith("True,")
+        trace.marker.size = 11 if is_current_user else 6
+        trace.marker.opacity = 0.98 if is_current_user else 0.65
+        trace.marker.line = {"width": 3 if is_current_user else 1, "color": "#0f172a"}
     figure.update_layout(
         scene={
             "xaxis_title": "UMAP/PCA X",
             "yaxis_title": "UMAP/PCA Y",
             "zaxis_title": "UMAP/PCA Z",
         },
-        legend_title_text="Alias sintético",
+        legend_title_text="Tipo de comentario / usuario actual",
         margin={"l": 0, "r": 0, "b": 0, "t": 60},
         annotations=[
             {
@@ -394,6 +466,7 @@ def build_seed_batch_payload(
                 "exercise": record.exercise,
                 "profile": record.profile,
                 "progress_payload": record.progress_payload,
+                "comment_events": record.comment_event_rows,
                 "feedback_payload": record.feedback_payload,
                 "traceability_payload": record.traceability_payload,
             }

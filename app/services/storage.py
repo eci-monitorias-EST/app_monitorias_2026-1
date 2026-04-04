@@ -6,13 +6,17 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-from domain.models import CompletedComment, ExerciseProgress, FeedbackRecord, ParticipantRecord
+from domain.models import CompletedComment, ExerciseProgress, FeedbackRecord, ParticipantRecord, utc_now_iso
 from services.comment_events import COMMENT_TYPE_LABELS, build_comment_event_records
 from services.configuration import load_app_config
 from services.submission_validation import SubmissionValidationService
 
 
 class JsonStateStore:
+    ACCESS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    ACCESS_CODE_GROUP_LENGTH = 4
+    ACCESS_CODE_GROUP_COUNT = 3
+
     def __init__(self, path: Path | None = None) -> None:
         config = load_app_config()
         self._submission_validation = SubmissionValidationService()
@@ -30,13 +34,29 @@ class JsonStateStore:
         self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     @staticmethod
-    def normalize_access_key(value: str) -> str:
-        return " ".join(value.strip().lower().split())
+    def normalize_access_code(value: str) -> str:
+        return "".join(character for character in value.upper() if character.isalnum())
+
+    @classmethod
+    def hash_access_code(cls, value: str) -> str:
+        normalized = cls.normalize_access_code(value)
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def normalize_access_key(cls, value: str) -> str:
+        return cls.normalize_access_code(value)
 
     @classmethod
     def hash_access_key(cls, value: str) -> str:
-        normalized = cls.normalize_access_key(value)
-        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        return cls.hash_access_code(value)
+
+    @classmethod
+    def generate_access_code(cls) -> str:
+        groups = [
+            "".join(secrets.choice(cls.ACCESS_CODE_ALPHABET) for _ in range(cls.ACCESS_CODE_GROUP_LENGTH))
+            for _ in range(cls.ACCESS_CODE_GROUP_COUNT)
+        ]
+        return "-".join(groups)
 
     def _load_records(self) -> dict[str, ParticipantRecord]:
         payload = self._load_raw()
@@ -53,17 +73,54 @@ class JsonStateStore:
             }
         )
 
+    def _generate_unique_access_code(self, records: dict[str, ParticipantRecord]) -> tuple[str, str]:
+        existing_hashes = {record.access_code_hash for record in records.values() if record.access_code_hash}
+        for _ in range(32):
+            access_code_display = self.generate_access_code()
+            access_code_hash = self.hash_access_code(access_code_display)
+            if access_code_hash not in existing_hashes:
+                return access_code_display, access_code_hash
+        raise RuntimeError("No fue posible generar un código de acceso único.")
+
+    def create_participant(self, profile: dict[str, Any]) -> ParticipantRecord:
+        records = self._load_records()
+        access_code_display, access_code_hash = self._generate_unique_access_code(records)
+        public_alias = f"P-{len(records) + 1:03d}"
+        record = ParticipantRecord(
+            participant_id=secrets.token_hex(6),
+            access_code_hash=access_code_hash,
+            public_alias=public_alias,
+            profile=dict(profile),
+            access_code_display=access_code_display,
+        )
+        records[access_code_hash] = record
+        self._save_records(records)
+        return record
+
+    def update_profile(self, participant_id: str, profile: dict[str, Any]) -> ParticipantRecord:
+        records = self._load_records()
+        for record in records.values():
+            if record.participant_id == participant_id:
+                record.profile.update(profile)
+                record.updated_at = utc_now_iso()
+                self._save_records(records)
+                return record
+        raise KeyError(f"Participant not found: {participant_id}")
+
     def upsert_participant(self, access_key: str, profile: dict[str, Any]) -> ParticipantRecord:
-        access_hash = self.hash_access_key(access_key)
+        access_hash = self.hash_access_code(access_key)
         records = self._load_records()
         record = records.get(access_hash)
         if record is None:
+            normalized_access_code = self.normalize_access_code(access_key)
+            access_code_display = normalized_access_code or access_key.strip().upper()
             public_alias = f"P-{len(records) + 1:03d}"
             record = ParticipantRecord(
                 participant_id=secrets.token_hex(6),
-                access_key_hash=access_hash,
+                access_code_hash=access_hash,
                 public_alias=public_alias,
-                profile=profile,
+                profile=dict(profile),
+                access_code_display=access_code_display,
             )
             records[access_hash] = record
         else:
@@ -71,9 +128,16 @@ class JsonStateStore:
         self._save_records(records)
         return records[access_hash]
 
-    def get_participant(self, access_key: str) -> ParticipantRecord | None:
-        access_hash = self.hash_access_key(access_key)
-        return self._load_records().get(access_hash)
+    def get_participant(self, access_code: str) -> ParticipantRecord | None:
+        access_hash = self.hash_access_code(access_code)
+        records = self._load_records()
+        record = records.get(access_hash)
+        if record is not None:
+            return record
+        for candidate in records.values():
+            if candidate.access_code_hash == access_hash:
+                return candidate
+        return None
 
     def get_participant_by_id(self, participant_id: str) -> ParticipantRecord | None:
         records = self._load_records()

@@ -160,6 +160,7 @@ A change is only considered complete when:
 | Skill | Description | Location |
 | --- | --- | --- |
 | `administrar-sheet-remoto` | Audita, normaliza y administra el Google Sheet remoto vía Apps Script, incluyendo snapshots, fix legacy y caches. | `skills/administrar-sheet-remoto/SKILL.md` |
+| `comentarios-3d-incrementales` | Implementa y mantiene el flujo incremental del gráfico 3D con comment_events, caches y separación por ejercicio. | `skills/comentarios-3d-incrementales/SKILL.md` |
 | `imputacion-sintetica-sheet-3d` | Orquesta lotes sintéticos en Google Sheets/Apps Script, render 3D HTML y borrado controlado por batch. | `skills/imputacion-sintetica-sheet-3d/SKILL.md` |
 | `detectar-procesos-repetitivos` | Detecta procesos repetidos y obliga a proponer una skill reusable antes de seguir improvisando. | `skills/detectar-procesos-repetitivos/SKILL.md` |
 | `detectar-falsos-positivos` | Evalúa si un hallazgo corresponde a un falso positivo, un error válido, un caso ambiguo o ruido no material. | `skills/detectar-falsos-positivos/SKILL.md` |
@@ -170,4 +171,5 @@ A change is only considered complete when:
 2. Usa `detectar-falsos-positivos` cuando un hallazgo, clasificación, sync remoto o validación pueda estar marcando éxito/error con señales ambiguas o contradictorias.
 3. Usa `imputacion-sintetica-sheet-3d` cuando haya que sembrar datos sintéticos en Google Sheets, renderizar HTML 3D con MiniLM+UMAP o preparar borrado seguro por `test_batch_id`.
 4. Usa `administrar-sheet-remoto` cuando haya que exportar snapshots, corregir filas legacy, poblar caches o reconstruir proyecciones del Sheet sin depender de la UI de Google Sheets.
-5. Si una skill local resuelve mejor el contexto del repo que una instrucción genérica, priorízala antes de improvisar pasos manuales repetidos.
+5. Usa `comentarios-3d-incrementales` cuando haya que tocar `comment_events`, el gráfico 3D, el resaltado del usuario actual o la separación por ejercicio en comentarios.
+6. Si una skill local resuelve mejor el contexto del repo que una instrucción genérica, priorízala antes de improvisar pasos manuales repetidos.

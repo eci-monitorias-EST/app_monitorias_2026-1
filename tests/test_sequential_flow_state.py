@@ -107,7 +107,7 @@ def test_derive_max_unlocked_step_resets_new_exercise_but_restores_previous_prog
     )
 
     assert derive_max_unlocked_step(empty_record, SubmissionValidationService().has_meaningful_learning_text) == 4
-    assert derive_max_unlocked_step(progressed_record, SubmissionValidationService().has_meaningful_learning_text) == 7
+    assert derive_max_unlocked_step(progressed_record, SubmissionValidationService().has_meaningful_learning_text) == 8
 
 
 def test_invalid_step_id_raises_clear_error() -> None:
@@ -132,9 +132,10 @@ def _build_record(
 ) -> ParticipantRecord:
     record = ParticipantRecord(
         participant_id="participant-1",
-        access_key_hash="hash",
+        access_code_hash="hash",
         public_alias="Alias 1",
         profile={"nombre": "Ada"},
+        access_code_display="ABCD-EFGH-JKLM",
         selected_exercise=selected_exercise,
     )
     record.upsert_progress(

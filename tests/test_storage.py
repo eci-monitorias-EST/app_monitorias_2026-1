@@ -15,6 +15,29 @@ def test_upsert_participant_is_idempotent(tmp_path: Path) -> None:
     assert second.profile["name"] == "Ana María"
 
 
+def test_create_participant_generates_unique_access_code_and_persists_hash(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+
+    first = store.create_participant({"name": "Ana"})
+    second = store.create_participant({"name": "Luis"})
+
+    assert first.access_code_display
+    assert second.access_code_display
+    assert first.access_code_display != second.access_code_display
+    assert first.access_code_hash == store.hash_access_code(first.access_code_display)
+    assert second.access_code_hash == store.hash_access_code(second.access_code_display)
+
+
+def test_get_participant_recovers_by_generated_access_code_even_with_separator_variants(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.create_participant({"name": "Ana"})
+
+    recovered = store.get_participant(participant.access_code_display.replace("-", " ").lower())
+
+    assert recovered is not None
+    assert recovered.participant_id == participant.participant_id
+
+
 def test_progress_and_feedback_update_existing_record(tmp_path: Path) -> None:
     store = JsonStateStore(path=tmp_path / "state.json")
     participant = store.upsert_participant("user-001", {"name": "Luis"})
@@ -72,6 +95,8 @@ def test_legacy_feedback_is_migrated_to_selected_exercise_progress(tmp_path: Pat
     assert progress.feedback is not None
     assert progress.feedback.summary == "Muy claro"
     assert progress.completed_at == "2026-04-01T00:10:00+00:00"
+    assert record.access_code_hash == "legacy"
+    assert record.access_code_display == ""
 
 
 def test_list_completed_comments_includes_predicted_meaningful_comments_without_completion(

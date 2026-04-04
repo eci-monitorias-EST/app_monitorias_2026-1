@@ -196,6 +196,7 @@ def verify_seed_batch_visibility(
         raise ValueError("initial_backoff_seconds debe ser mayor que cero.")
 
     expected_by_exercise = _count_records_by_exercise(batch.records)
+    expected_comment_events_by_exercise = _count_comment_events_by_exercise(batch.records)
     last_observed_state = "sin observaciones"
 
     for attempt in range(1, max_attempts + 1):
@@ -207,11 +208,17 @@ def verify_seed_batch_visibility(
             )
             observed_sessions = len(payload.get("sesiones", []))
             observed_responses = len(payload.get("respuestas", []))
+            observed_comment_events = len(payload.get("comment_events", []))
             last_observed_state = (
                 f"exercise={exercise} sesiones={observed_sessions}/{batch.total_records} "
-                f"respuestas={observed_responses}/{expected_records}"
+                f"respuestas={observed_responses}/{expected_records} "
+                f"comment_events={observed_comment_events}/{expected_comment_events_by_exercise.get(exercise, 0)}"
             )
-            if observed_sessions < batch.total_records or observed_responses < expected_records:
+            if (
+                observed_sessions < batch.total_records
+                or observed_responses < expected_records
+                or observed_comment_events < expected_comment_events_by_exercise.get(exercise, 0)
+            ):
                 verification_errors.append(last_observed_state)
 
         if not verification_errors:
@@ -251,6 +258,15 @@ def _count_records_by_exercise(records: list[Any]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for record in records:
         counts[record.exercise] = counts.get(record.exercise, 0) + 1
+    return counts
+
+
+def _count_comment_events_by_exercise(records: list[Any]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record.exercise] = counts.get(record.exercise, 0) + len(
+            getattr(record, "comment_event_rows", [])
+        )
     return counts
 
 
@@ -327,6 +343,7 @@ def verify_delete_batch_visibility(
             "sesiones": len(payload.get("sesiones", [])),
             "respuestas": len(payload.get("respuestas", [])),
             "historial_comentarios": len(payload.get("historial_comentarios", [])),
+            "comment_events": len(payload.get("comment_events", [])),
             "feedback": len(payload.get("feedback", [])),
             "control": len(payload.get("control", [])),
         }

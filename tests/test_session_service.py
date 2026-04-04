@@ -28,36 +28,55 @@ class RecordingRemoteSyncClient(RemoteSyncClient):
         self.calls.append(("completion", completion_payload))
 
 
-def test_login_or_resume_persists_local_record_and_syncs_expected_payload(tmp_path: Path) -> None:
+def test_start_session_persists_local_record_and_syncs_expected_payload(tmp_path: Path) -> None:
     remote_sync = RecordingRemoteSyncClient()
     service = SessionService(
         store=JsonStateStore(path=tmp_path / "state.json"),
         remote_sync=remote_sync,
     )
 
-    record = service.login_or_resume("student-001", {"name": "Ana", "course": "ML"})
-    persisted = service.recover("student-001")
+    record = service.start_session({"name": "Ana", "course": "ML"})
+    persisted = service.recover(record.access_code_display)
 
     assert persisted is not None
     assert persisted.participant_id == record.participant_id
     assert persisted.profile == {"name": "Ana", "course": "ML"}
+    assert persisted.access_code_display == record.access_code_display
     assert remote_sync.calls == [
         (
             "participant",
             {
                 "participant_id": record.participant_id,
                 "public_alias": record.public_alias,
+                "access_code_display": record.access_code_display,
+                "access_code_hash": record.access_code_hash,
                 "profile": {"name": "Ana", "course": "ML"},
             },
         )
     ]
 
 
+def test_login_or_resume_recovers_existing_record_by_access_code(tmp_path: Path) -> None:
+    remote_sync = RecordingRemoteSyncClient()
+    service = SessionService(
+        store=JsonStateStore(path=tmp_path / "state.json"),
+        remote_sync=remote_sync,
+    )
+
+    created = service.start_session({"name": "Ana"})
+
+    resumed = service.login_or_resume(created.access_code_display, {"course": "ML"})
+
+    assert resumed.participant_id == created.participant_id
+    assert resumed.profile == {"name": "Ana", "course": "ML"}
+    assert resumed.access_code_display == created.access_code_display
+
+
 def test_save_feedback_updates_store_and_syncs_serialized_feedback_payload(tmp_path: Path) -> None:
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-002", {"name": "Luis"})
+    participant = service.start_session({"name": "Luis"})
 
     updated = service.save_feedback(
         participant.participant_id,
@@ -97,7 +116,7 @@ def test_save_progress_syncs_consolidated_exercise_payload_instead_of_partial_pa
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-003", {"name": "Mica"})
+    participant = service.start_session({"name": "Mica"})
 
     service.save_progress(
         participant.participant_id,
@@ -135,7 +154,7 @@ def test_save_progress_syncs_individual_comment_events_with_hashes(tmp_path: Pat
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-004", {"name": "Noa"})
+    participant = service.start_session({"name": "Noa"})
 
     service.save_progress(
         participant.participant_id,
@@ -162,7 +181,7 @@ def test_multi_exercise_progress_and_feedback_stay_bounded_to_two_records_per_pa
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-005", {"name": "Luna"})
+    participant = service.start_session({"name": "Luna"})
 
     for exercise in ("credit_approval", "default_risk"):
         service.save_progress(
@@ -210,7 +229,7 @@ def test_editing_same_comment_type_updates_same_logical_comment_event_row(tmp_pa
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-006", {"name": "Sofi"})
+    participant = service.start_session({"name": "Sofi"})
 
     service.save_progress(
         participant.participant_id,
@@ -241,7 +260,7 @@ def test_session_and_completion_events_define_at_most_three_control_rows(tmp_pat
     remote_sync = RecordingRemoteSyncClient()
     store = JsonStateStore(path=tmp_path / "state.json")
     service = SessionService(store=store, remote_sync=remote_sync)
-    participant = service.login_or_resume("student-007", {"name": "Teo"})
+    participant = service.start_session({"name": "Teo"})
 
     service.complete_activity(participant.participant_id, "credit_approval")
     service.complete_activity(participant.participant_id, "default_risk")

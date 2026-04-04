@@ -9,7 +9,12 @@ from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from domain.models import CompletedComment
-from services.comment_events import COMMENT_TYPE_LABELS, CommentTextCleaner as TextCleaner, build_comment_hash
+from services.comment_events import (
+    COMMENT_TYPE_LABELS,
+    CommentTextCleaner as TextCleaner,
+    build_comment_event_rows_from_payload,
+    build_comment_hash,
+)
 from services.configuration import load_app_config
 from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingProvider
 from services.remote_sync import RemoteSyncClient
@@ -100,7 +105,19 @@ class CommentAnalyticsService:
         if self.remote_sync is not None:
             remote_rows = self.remote_sync.query_comment_events(exercise, self.source_snapshot_limit)
             if remote_rows is not None:
-                return self._build_comments_from_remote_rows(remote_rows, current_participant_id)
+                remote_comments = self._build_comments_from_remote_rows(remote_rows, current_participant_id)
+                if remote_comments:
+                    return remote_comments
+
+                projection_rows = self.remote_sync.query_projection_comments(
+                    exercise,
+                    self.source_snapshot_limit,
+                )
+                if projection_rows is not None:
+                    return self._build_comments_from_projection_rows(
+                        projection_rows,
+                        current_participant_id,
+                    )
 
         if self.store is None:
             return []
@@ -175,6 +192,52 @@ class CommentAnalyticsService:
                     comment_type=comment_type,
                     comment_type_label=COMMENT_TYPE_LABELS.get(comment_type, comment_type),
                 )
+            )
+        return comments
+
+    def _build_comments_from_projection_rows(
+        self,
+        rows: list[dict[str, Any]],
+        current_participant_id: str,
+    ) -> list[CompletedComment]:
+        comments: list[CompletedComment] = []
+        for row in rows:
+            participant_id = str(row.get("participant_id", "")).strip()
+            public_alias = str(row.get("public_alias", participant_id)).strip() or participant_id
+            exercise = str(row.get("exercise", "")).strip()
+            comment_events = build_comment_event_rows_from_payload(
+                participant_id=participant_id,
+                public_alias=public_alias,
+                exercise=exercise,
+                progress_payload={
+                    "dataset_comment": row.get("dataset_comment", ""),
+                    "analytics_comment": row.get("analytics_comment", ""),
+                    "prediction_reflection": row.get("prediction_reflection", ""),
+                },
+                validator=self.validator,
+                cleaner=self.cleaner,
+                updated_at=str(row.get("updated_at", "")).strip(),
+            )
+            comments.extend(
+                CompletedComment(
+                    participant_id=event_row["participant_id"],
+                    public_alias=event_row["public_alias"],
+                    exercise=event_row["exercise"],
+                    combined_comment=event_row["comment_text"],
+                    current_user=event_row["participant_id"] == current_participant_id,
+                    clean_comment=event_row["clean_comment"],
+                    comment_hash=event_row["comment_hash"],
+                    source_updated_at=event_row["updated_at"],
+                    source_sheet_row_number=int(event_row.get("source_sheet_row_number", 0) or 0),
+                    comment_type=event_row["comment_type"],
+                    comment_type_label=str(
+                        COMMENT_TYPE_LABELS.get(
+                            event_row["comment_type"],
+                            event_row["comment_type"],
+                        )
+                    ),
+                )
+                for event_row in comment_events
             )
         return comments
 

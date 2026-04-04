@@ -60,7 +60,11 @@ function doPost(e) {
       return jsonResponse_(backfillEmbeddingsCache_(sheets, data));
     }
 
-    if (action === "query_projection_comments" || action === "query_comment_events") {
+    if (action === "query_projection_comments") {
+      return jsonResponse_(queryProjectionComments_(sheets, data));
+    }
+
+    if (action === "query_comment_events") {
       return jsonResponse_(queryCommentEvents_(sheets, data, action));
     }
 
@@ -98,6 +102,8 @@ function doPost(e) {
         [
           "participant_id",
           "public_alias",
+          "access_code_display",
+          "access_code_hash",
           "Dia",
           "nombre",
           "sexo",
@@ -352,6 +358,10 @@ function normalizeSessionPayload_(data) {
   return {
     participant_id: String(data.participant_id || data.id || "").trim(),
     public_alias: String(data.public_alias || "").trim(),
+    access_code_display: String(
+      data.access_code_display || profile.access_code_display || ""
+    ).trim(),
+    access_code_hash: String(data.access_code_hash || profile.access_code_hash || "").trim(),
     Dia: String(data.Dia || profile.Dia || isoDateNow_()).trim(),
     nombre: String(profile.nombre || profile.name || data.nombre || "").trim(),
     sexo: String(profile.sexo || data.sexo || "").trim(),
@@ -485,7 +495,8 @@ function normalizeCommentEventRows_(rows) {
     const exercise = String(row.exercise || "").trim();
     const commentType = String(row.comment_type || "").trim();
     const commentText = String(row.comment_text || row.comment || "").trim();
-    const commentHash = String(row.comment_hash || "").trim();
+    const cleanComment = String(row.clean_comment || cleanCommentText_(commentText)).trim();
+    const commentHash = String(row.comment_hash || buildCommentHash_(cleanComment, true)).trim();
     validateRequired_(
       {
         participant_id: participantId,
@@ -502,7 +513,7 @@ function normalizeCommentEventRows_(rows) {
       exercise: exercise,
       comment_type: commentType,
       comment_text: commentText,
-      clean_comment: String(row.clean_comment || "").trim(),
+      clean_comment: cleanComment,
       comment_hash: commentHash,
       updated_at: String(row.updated_at || isoNow_()).trim(),
       source_sheet_row_number: Number(row.source_sheet_row_number || 0),
@@ -607,6 +618,7 @@ function seedTestBatch_(sheets, data) {
     const sessionControlPayloads = [];
     const progressPayloads = [];
     const historyPayloads = [];
+    const commentEventPayloads = [];
     const feedbackPayloads = [];
     const completedPayloads = [];
 
@@ -624,6 +636,9 @@ function seedTestBatch_(sheets, data) {
       progressPayloads.push(record.progress);
       if (record.history) {
         historyPayloads.push(record.history);
+      }
+      if (record.commentEvents && record.commentEvents.length > 0) {
+        Array.prototype.push.apply(commentEventPayloads, record.commentEvents);
       }
       feedbackPayloads.push(record.feedback);
       completedPayloads.push(record.completed);
@@ -644,6 +659,8 @@ function seedTestBatch_(sheets, data) {
           [
             "participant_id",
             "public_alias",
+            "access_code_display",
+            "access_code_hash",
             "Dia",
             "nombre",
             "sexo",
@@ -700,6 +717,25 @@ function seedTestBatch_(sheets, data) {
             "captured_at"
           ]
         ),
+        comment_events: upsertManyByKey_(
+          sheets.commentEvents,
+          ["participant_id", "exercise", "comment_type"],
+          commentEventPayloads,
+          [
+            "participant_id",
+            "public_alias",
+            "exercise",
+            "comment_type",
+            "comment_text",
+            "clean_comment",
+            "comment_hash",
+            "updated_at",
+            "source_sheet_row_number",
+            "is_test_data",
+            "test_batch_id",
+            "data_origin"
+          ]
+        ),
         feedback: upsertManyByKey_(
           sheets.feedback,
           ["participant_id", "exercise"],
@@ -748,11 +784,13 @@ function normalizeSeedBatchRecords_(data) {
       payload: record.feedback_payload || {}
     }));
     validateRequired_(feedback, ["participant_id", "exercise"]);
+    const commentEvents = buildCommentEventRowsFromSeedRecord_(record, progress, session.public_alias);
 
     return {
       session: session,
       progress: progress,
       history: buildCommentHistoryPayload_(progress),
+      commentEvents: commentEvents,
       feedback: feedback,
       completed: {
         participant_id: progress.participant_id,
@@ -765,6 +803,74 @@ function normalizeSeedBatchRecords_(data) {
       }
     };
   });
+}
+
+function buildCommentEventRowsFromSeedRecord_(record, progress, publicAlias) {
+  const providedRows = Array.isArray(record.comment_events) ? record.comment_events : [];
+  if (providedRows.length > 0) {
+    return normalizeCommentEventRows_(providedRows);
+  }
+
+  const commentTypes = ["dataset_comment", "analytics_comment", "prediction_reflection"];
+  return commentTypes.map(function(commentType) {
+    const commentText = String(progress[commentType] || "").trim();
+    if (!commentText) {
+      return null;
+    }
+    return {
+      participant_id: progress.participant_id,
+      public_alias: String(publicAlias || progress.participant_id).trim() || progress.participant_id,
+      exercise: progress.exercise,
+      comment_type: commentType,
+      comment_text: commentText,
+      clean_comment: cleanCommentText_(commentText),
+      comment_hash: buildCommentHash_(commentText, false),
+      updated_at: progress.updated_at,
+      source_sheet_row_number: 0,
+      is_test_data: progress.is_test_data,
+      test_batch_id: progress.test_batch_id,
+      data_origin: progress.data_origin
+    };
+  }).filter(function(row) {
+    return row !== null;
+  });
+}
+
+const COMMENT_EVENT_STOPWORDS_ = {
+  de: true, la: true, el: true, los: true, las: true, que: true, y: true, o: true,
+  en: true, un: true, una: true, para: true, por: true, con: true, del: true,
+  al: true, se: true, su: true, sus: true, me: true, mi: true, mis: true,
+  es: true, son: true, muy: true, mas: true, pero: true, porque: true,
+  como: true, lo: true, le: true, les: true, ha: true, han: true, fue: true,
+  ser: true, estar: true
+};
+
+function cleanCommentText_(text) {
+  const normalized = String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+|www\.\S+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.split(" ").filter(function(token) {
+    return token && !COMMENT_EVENT_STOPWORDS_[token];
+  }).join(" ");
+}
+
+function buildCommentHash_(comment, isClean) {
+  const normalized = isClean ? String(comment || "").trim() : cleanCommentText_(comment);
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    normalized,
+    Utilities.Charset.UTF_8
+  );
+  return digest.map(function(byteValue) {
+    const normalizedByte = byteValue < 0 ? byteValue + 256 : byteValue;
+    const hex = normalizedByte.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join("");
 }
 
 function fixLegacyRows_(sheets, data) {
@@ -1226,6 +1332,7 @@ function getAdminSheetByName_(sheets, requestedName) {
     sesiones: sheets.sesiones,
     respuestas: sheets.respuestas,
     historial_comentarios: sheets.historialComentarios,
+    comment_events: sheets.commentEvents,
     feedback: sheets.feedback,
     control_ingreso: sheets.control,
     embeddings_cache: sheets.embeddingsCache,

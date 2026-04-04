@@ -32,6 +32,9 @@ class RemoteSyncClient:
     def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
         return None
 
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        return None
+
     def query_embeddings_cache(
         self,
         *,
@@ -163,6 +166,15 @@ class AppsScriptSyncClient(RemoteSyncClient):
     def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
         payload = self._request(
             "query_comment_events",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_projection_comments",
             {"exercise": exercise, "limit_rows": limit_rows},
         )
         if payload is None:

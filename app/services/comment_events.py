@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
 from domain.models import CommentEvent, ExerciseProgress
 from services.submission_validation import SubmissionValidationService
@@ -80,3 +80,66 @@ def build_comment_event_records(
             )
         )
     return events
+
+
+def build_comment_event_rows(
+    *,
+    participant_id: str,
+    public_alias: str,
+    exercise: str,
+    progress: ExerciseProgress,
+    validator: SubmissionValidationService | None = None,
+    cleaner: CommentTextCleaner | None = None,
+    is_test_data: bool = False,
+    test_batch_id: str = "",
+    data_origin: str = "app_runtime",
+) -> list[dict[str, Any]]:
+    return [
+        event.to_dict()
+        for event in build_comment_event_records(
+            participant_id=participant_id,
+            public_alias=public_alias,
+            exercise=exercise,
+            progress=progress,
+            validator=validator,
+            cleaner=cleaner,
+            is_test_data=is_test_data,
+            test_batch_id=test_batch_id,
+            data_origin=data_origin,
+        )
+    ]
+
+
+def build_comment_event_rows_from_payload(
+    *,
+    participant_id: str,
+    public_alias: str,
+    exercise: str,
+    progress_payload: Mapping[str, Any],
+    validator: SubmissionValidationService | None = None,
+    cleaner: CommentTextCleaner | None = None,
+    is_test_data: bool = False,
+    test_batch_id: str = "",
+    data_origin: str = "app_runtime",
+    updated_at: str = "",
+) -> list[dict[str, Any]]:
+    progress = ExerciseProgress(
+        exercise=exercise,
+        dataset_comment=str(progress_payload.get("dataset_comment", "")).strip(),
+        analytics_comment=str(progress_payload.get("analytics_comment", "")).strip(),
+        prediction_reflection=str(progress_payload.get("prediction_reflection", "")).strip(),
+        prediction_inputs=dict(progress_payload.get("prediction_inputs", {})),
+        prediction_output=dict(progress_payload.get("prediction_output", {})),
+        updated_at=updated_at or ExerciseProgress(exercise=exercise).updated_at,
+    )
+    return build_comment_event_rows(
+        participant_id=participant_id,
+        public_alias=public_alias,
+        exercise=exercise,
+        progress=progress,
+        validator=validator,
+        cleaner=cleaner,
+        is_test_data=is_test_data,
+        test_batch_id=test_batch_id,
+        data_origin=data_origin,
+    )

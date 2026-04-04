@@ -46,10 +46,12 @@ class _RemoteSyncStub:
         self,
         *,
         comment_events: list[dict[str, Any]] | None = None,
+        projection_comments: list[dict[str, Any]] | None = None,
         embedding_rows: list[dict[str, Any]] | None = None,
         projection_rows: list[dict[str, Any]] | None = None,
     ) -> None:
         self.comment_events = comment_events
+        self.projection_comments = projection_comments
         self.embedding_rows = embedding_rows
         self.projection_rows = projection_rows
         self.saved_embeddings: list[dict[str, Any]] = []
@@ -60,6 +62,12 @@ class _RemoteSyncStub:
         if self.comment_events is None:
             return None
         return [row for row in self.comment_events if row["exercise"] == exercise]
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        del limit_rows
+        if self.projection_comments is None:
+            return None
+        return [row for row in self.projection_comments if row["exercise"] == exercise]
 
     def query_embeddings_cache(
         self,
@@ -518,6 +526,58 @@ def test_projection_build_for_exercise_persists_missing_embedding_and_projection
     assert remote_sync.saved_embeddings[0]["comment_hash"] == projection["points"][0]["comment_hash"]
     assert len(remote_sync.saved_projections) == 1
     assert remote_sync.saved_projections[0]["projection_version"] == "proj-v1"
+
+
+def test_projection_build_for_credit_approval_falls_back_to_respuestas_when_comment_events_are_empty() -> None:
+    remote_sync = _RemoteSyncStub(
+        comment_events=[],
+        projection_comments=[
+            {
+                "participant_id": "ca-1",
+                "public_alias": "TEST-001",
+                "exercise": "credit_approval",
+                "dataset_comment": "El dataset muestra ingresos consistentes y deuda baja.",
+                "analytics_comment": "El análisis destaca una relación cuota-ingreso estable.",
+                "prediction_reflection": "La predicción confirmó una aprobación con riesgo controlado.",
+                "updated_at": "2026-04-03T00:00:00Z",
+                "source_sheet_row_number": 11,
+            },
+            {
+                "participant_id": "dr-1",
+                "public_alias": "TEST-002",
+                "exercise": "default_risk",
+                "dataset_comment": "No debería mezclarse con crédito.",
+                "analytics_comment": "Tampoco este comentario.",
+                "prediction_reflection": "Ni esta reflexión.",
+                "updated_at": "2026-04-03T00:01:00Z",
+                "source_sheet_row_number": 12,
+            },
+        ],
+        embedding_rows=[],
+        projection_rows=[],
+    )
+
+    service = CommentAnalyticsService(
+        embedder=_ThreePointEmbedderStub(),
+        reducer=DimensionalityReducer(),
+        remote_sync=remote_sync,
+        comments_config={
+            "embedding_version": "emb-v1",
+            "projection_version": "proj-v1",
+            "source_snapshot_limit": 20,
+        },
+    )
+
+    projection = service.build_projection_for_exercise("credit_approval", "ca-1")
+
+    assert len(projection["points"]) == 3
+    assert {point["comment_type"] for point in projection["points"]} == {
+        "dataset_comment",
+        "analytics_comment",
+        "prediction_reflection",
+    }
+    assert all(point["participant_id"] == "ca-1" for point in projection["points"])
+    assert projection["points"][0]["current_user"] is True
 
 
 def test_projection_reuses_same_cached_embedding_by_comment_hash_for_multiple_participants() -> None:

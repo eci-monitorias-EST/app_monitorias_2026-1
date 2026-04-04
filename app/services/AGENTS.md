@@ -21,3 +21,4 @@ Núcleo de lógica de negocio, persistencia, sincronización remota, modelado, v
 
 - `detectar-falsos-positivos`: para validar clasificaciones, respuestas remotas ambiguas, thresholds y estados contradictorios.
 - `detectar-procesos-repetitivos`: cuando aparezcan secuencias repetidas de validación, sync, refactor o endurecimiento de contratos.
+- `comentarios-3d-incrementales`: cuando haya que trabajar `comment_events`, `comment_hash`, `embeddings_cache`, `projection_cache` o la separación por ejercicio del 3D.

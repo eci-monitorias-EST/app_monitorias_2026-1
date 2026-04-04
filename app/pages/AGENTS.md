@@ -20,3 +20,4 @@ Páginas Streamlit y orquestación del flujo visible al usuario.
 
 - `detectar-falsos-positivos`: al mostrar resultados de modelos, sync remoto o visualizaciones que puedan inducir a una lectura errónea.
 - `detectar-procesos-repetitivos`: si se repiten patrones de formularios, guards o navegación que ameriten abstraerse.
+- `comentarios-3d-incrementales`: cuando haya que modificar la visualización 3D, separar comentarios por tipo o resaltar al usuario actual.
