@@ -408,7 +408,36 @@ def _build_synthetic_profile(profile: dict[str, Any]) -> dict[str, Any]:
     school = str(output.get("colegio", "Colegio Sintético")).strip()
     output["nombre"] = name if name.upper().startswith("SINTÉTICO") else f"SINTÉTICO {name}"
     output["colegio"] = school if "sintétic" in school.lower() else f"{school} (sintético)"
+    output["sexo"] = _normalize_gender(output.get("sexo", ""))
+    output["edad"] = _normalize_age(output.get("edad", 14))
+    output["grado"] = _normalize_grade(output.get("grado", "10"))
     return output
+
+
+def _normalize_gender(value: Any) -> str:
+    normalized = str(value).strip().lower()
+    if normalized in {"m", "masculino", "male", "hombre"}:
+        return "Masculino"
+    if normalized in {"f", "femenino", "female", "mujer"}:
+        return "Femenino"
+    return "Femenino"
+
+
+def _normalize_age(value: Any) -> int:
+    try:
+        age = int(value)
+    except (TypeError, ValueError):
+        age = 14
+    return max(14, min(25, age))
+
+
+def _normalize_grade(value: Any) -> str:
+    raw = str(value).strip().lower()
+    if raw in {"10", "decimo", "décimo"}:
+        return "10"
+    if raw in {"11", "once"}:
+        return "11"
+    return "10"
 
 
 def _clone_scenario_variant(

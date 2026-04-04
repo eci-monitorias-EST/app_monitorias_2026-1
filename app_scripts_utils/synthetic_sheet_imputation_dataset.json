@@ -7,7 +7,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Camila Rivera",
-        "sexo": "F",
+        "sexo": "Femenino",
         "colegio": "Instituto Aurora",
         "edad": 16,
         "grado": "11",
@@ -31,7 +31,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Miguel Torres",
-        "sexo": "M",
+        "sexo": "Masculino",
         "colegio": "Colegio Horizonte",
         "edad": 17,
         "grado": "10",
@@ -55,7 +55,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Valentina Luna",
-        "sexo": "F",
+        "sexo": "Femenino",
         "colegio": "Liceo Delta",
         "edad": 16,
         "grado": "11",
@@ -79,7 +79,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Sofía Méndez",
-        "sexo": "F",
+        "sexo": "Femenino",
         "colegio": "Instituto Boreal",
         "edad": 17,
         "grado": "10",
@@ -103,7 +103,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Tomás Vega",
-        "sexo": "M",
+        "sexo": "Masculino",
         "colegio": "Colegio Newton",
         "edad": 17,
         "grado": "11",
@@ -127,7 +127,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Juliana Pardo",
-        "sexo": "F",
+        "sexo": "Femenino",
         "colegio": "Instituto Prisma",
         "edad": 16,
         "grado": "11",
@@ -151,7 +151,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Nicolás Castaño",
-        "sexo": "M",
+        "sexo": "Masculino",
         "colegio": "Liceo Vector",
         "edad": 17,
         "grado": "10",
@@ -175,7 +175,7 @@
       "profile": {
         "Dia": "2026-04-01",
         "nombre": "Laura Salcedo",
-        "sexo": "F",
+        "sexo": "Femenino",
         "colegio": "Colegio Origen",
         "edad": 16,
         "grado": "10",

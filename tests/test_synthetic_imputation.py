@@ -221,6 +221,46 @@ def test_batch_builder_marks_records_with_traceability() -> None:
     assert record.progress_payload["dataset_comment"].startswith("[DATOS_SINTETICOS|batch=batch-123]")
     assert record.feedback_payload["summary"].startswith("[DATOS_SINTETICOS|batch=batch-123]")
     assert record.progress_payload["prediction_output"]["provider"] == "stub"
+    assert record.profile["sexo"] == "Femenino"
+    assert 14 <= record.profile["edad"] <= 25
+    assert record.profile["grado"] in {"10", "11"}
+
+
+def test_batch_builder_normalizes_gender_age_and_grade_ranges() -> None:
+    builder = SyntheticBatchBuilder(
+        feature_resolver=_ResolverStub(),
+        predictor=_PredictorStub(),
+    )
+    scenarios = [
+        SyntheticScenarioSpec(
+            scenario_id="scenario-001",
+            exercise="default_risk",
+            dataset_row_index=4,
+            profile={
+                "nombre": "Alex",
+                "colegio": "Colegio Demo",
+                "edad": 30,
+                "grado": "noveno",
+                "sexo": "M",
+            },
+            dataset_comment="Comentario sobre dataset",
+            analytics_comment="Comentario analítico",
+            prediction_reflection="Comentario de reflexión",
+            feedback=SyntheticFeedbackSpec(
+                rating=5,
+                summary="Buen ejercicio",
+                missing_topics="Más ejemplos",
+                improvement_ideas="Agregar comparaciones",
+            ),
+        )
+    ]
+
+    batch = builder.build_batch(scenarios, test_batch_id="batch-normalize")
+    profile = batch.records[0].profile
+
+    assert profile["sexo"] == "Masculino"
+    assert profile["edad"] == 25
+    assert profile["grado"] == "10"
 
 
 def test_build_projection_comments_joins_session_alias_and_filters_exercise() -> None:
