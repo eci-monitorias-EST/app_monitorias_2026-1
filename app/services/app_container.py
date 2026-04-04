@@ -18,7 +18,7 @@ class AppContainer:
         self.catalog = DatasetCatalog()
         self.models = ModelRegistry(self.catalog)
         self.predictions = PredictionService(self.models)
-        self.comments = CommentAnalyticsService()
+        self.comments = CommentAnalyticsService(store=self.store, remote_sync=self.remote_sync)
         self.keywords = CommentKeywordService()
         self.submission_validation = SubmissionValidationService()
 

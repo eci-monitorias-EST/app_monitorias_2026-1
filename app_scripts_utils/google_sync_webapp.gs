@@ -58,6 +58,26 @@ function doPost(e) {
       return jsonResponse_(backfillEmbeddingsCache_(sheets, data));
     }
 
+    if (action === "query_projection_comments") {
+      return jsonResponse_(queryProjectionComments_(sheets, data));
+    }
+
+    if (action === "query_embeddings_cache") {
+      return jsonResponse_(queryEmbeddingsCache_(sheets, data));
+    }
+
+    if (action === "upsert_embeddings_cache") {
+      return jsonResponse_(upsertEmbeddingsCache_(sheets, data));
+    }
+
+    if (action === "query_projection_cache") {
+      return jsonResponse_(queryProjectionCache_(sheets, data));
+    }
+
+    if (action === "upsert_projection_cache") {
+      return jsonResponse_(upsertProjectionCache_(sheets, data));
+    }
+
     if (action === "rebuild_projection_cache") {
       return jsonResponse_(rebuildProjectionCache_(sheets, data));
     }
@@ -826,11 +846,12 @@ function backfillEmbeddingsCache_(sheets, data) {
   if (!dryRun && rows.length > 0) {
     writeResult = upsertManyByKey_(
       sheets.embeddingsCache,
-      ["participant_id", "exercise", "embedding_version"],
+      ["participant_id", "exercise", "comment_hash", "embedding_version"],
       rows,
       [
         "participant_id",
         "exercise",
+        "comment_hash",
         "embedding_version",
         "embedding_provider",
         "comment_text",
@@ -851,6 +872,149 @@ function backfillEmbeddingsCache_(sheets, data) {
     processed_rows: rows.length,
     write_result: writeResult,
     preview: rows.slice(0, 20)
+  };
+}
+
+function queryProjectionComments_(sheets, data) {
+  const exercise = String(data.exercise || "").trim();
+  validateRequired_({ exercise: exercise }, ["exercise"]);
+  const limitRows = normalizePositiveInteger_(data.limit_rows, 500, 5000);
+  const aliasesByParticipant = {};
+  getSheetRows_(sheets.sesiones).forEach(function(row) {
+    const participantId = String(row.participant_id || "").trim();
+    if (!participantId) {
+      return;
+    }
+    aliasesByParticipant[participantId] = String(row.public_alias || participantId).trim() || participantId;
+  });
+
+  const rows = getSheetRowsWithRowNumber_(sheets.respuestas)
+    .filter(function(row) {
+      return String(row.exercise || "").trim() === exercise;
+    })
+    .filter(function(row) {
+      return hasProjectionCommentData_(row);
+    })
+    .slice(0, limitRows)
+    .map(function(row) {
+      const participantId = String(row.participant_id || "").trim();
+      return {
+        participant_id: participantId,
+        public_alias: aliasesByParticipant[participantId] || participantId,
+        exercise: exercise,
+        dataset_comment: String(row.dataset_comment || "").trim(),
+        analytics_comment: String(row.analytics_comment || "").trim(),
+        prediction_reflection: String(row.prediction_reflection || "").trim(),
+        combined_comment: buildCombinedProjectionComment_(row),
+        prediction_output: String(row.prediction_output || "").trim(),
+        updated_at: String(row.updated_at || "").trim(),
+        source_sheet_row_number: row._rowNumber
+      };
+    });
+
+  return {
+    status: "success",
+    action: "query_projection_comments",
+    exercise: exercise,
+    rows: rows,
+    returned_rows: rows.length
+  };
+}
+
+function queryEmbeddingsCache_(sheets, data) {
+  const exercise = String(data.exercise || "").trim();
+  const embeddingVersion = String(data.embedding_version || "").trim();
+  validateRequired_({ exercise: exercise, embedding_version: embeddingVersion }, ["exercise", "embedding_version"]);
+  const filters = normalizeCacheQueryFilters_(data);
+  const rows = getSheetRows_(sheets.embeddingsCache).filter(function(row) {
+    return rowMatchesCacheQuery_(row, filters, embeddingVersion, "");
+  });
+  return {
+    status: "success",
+    action: "query_embeddings_cache",
+    exercise: exercise,
+    embedding_version: embeddingVersion,
+    rows: rows
+  };
+}
+
+function upsertEmbeddingsCache_(sheets, data) {
+  const rows = normalizeEmbeddingsCacheRows_(data.rows);
+  const writeResult = upsertManyByKey_(
+    sheets.embeddingsCache,
+    ["participant_id", "exercise", "comment_hash", "embedding_version"],
+    rows,
+    [
+      "participant_id",
+      "exercise",
+      "comment_hash",
+      "embedding_version",
+      "embedding_provider",
+      "comment_text",
+      "clean_comment",
+      "embedding_vector_json",
+      "source_updated_at",
+      "source_sheet_row_number",
+      "cache_key",
+      "updated_at"
+    ]
+  );
+  SpreadsheetApp.flush();
+  return {
+    status: "success",
+    action: "upsert_embeddings_cache",
+    write_result: writeResult,
+    rows: rows.length
+  };
+}
+
+function queryProjectionCache_(sheets, data) {
+  const exercise = String(data.exercise || "").trim();
+  const projectionVersion = String(data.projection_version || "").trim();
+  validateRequired_({ exercise: exercise, projection_version: projectionVersion }, ["exercise", "projection_version"]);
+  const filters = normalizeCacheQueryFilters_(data);
+  const rows = getSheetRows_(sheets.projectionCache).filter(function(row) {
+    return rowMatchesCacheQuery_(row, filters, "", projectionVersion);
+  });
+  return {
+    status: "success",
+    action: "query_projection_cache",
+    exercise: exercise,
+    projection_version: projectionVersion,
+    rows: rows
+  };
+}
+
+function upsertProjectionCache_(sheets, data) {
+  const rows = normalizeProjectionCacheRows_(data.rows, "", "");
+  const writeResult = upsertManyByKey_(
+    sheets.projectionCache,
+    ["participant_id", "exercise", "comment_hash", "projection_version"],
+    rows,
+    [
+      "participant_id",
+      "exercise",
+      "comment_hash",
+      "projection_version",
+      "embedding_provider",
+      "reduction_provider",
+      "public_alias",
+      "comment_text",
+      "clean_comment",
+      "x",
+      "y",
+      "z",
+      "source_updated_at",
+      "source_sheet_row_number",
+      "updated_at"
+    ]
+  );
+  SpreadsheetApp.flush();
+  return {
+    status: "success",
+    action: "upsert_projection_cache",
+    write_result: writeResult,
+    rows: rows.length
   };
 }
 
@@ -889,6 +1053,7 @@ function rebuildProjectionCache_(sheets, data) {
       appendObjectsToSheet_(sheets.projectionCache, rows, [
         "participant_id",
         "exercise",
+        "comment_hash",
         "projection_version",
         "embedding_provider",
         "reduction_provider",
@@ -906,11 +1071,12 @@ function rebuildProjectionCache_(sheets, data) {
     } else if (rows.length > 0) {
       writeResult = upsertManyByKey_(
         sheets.projectionCache,
-        ["participant_id", "exercise", "projection_version"],
+        ["participant_id", "exercise", "comment_hash", "projection_version"],
         rows,
         [
           "participant_id",
           "exercise",
+          "comment_hash",
           "projection_version",
           "embedding_provider",
           "reduction_provider",
@@ -1148,18 +1314,21 @@ function normalizeEmbeddingsCacheRows_(rows) {
   return rows.map(function(row) {
     const participantId = String(row.participant_id || "").trim();
     const exercise = String(row.exercise || "").trim();
+    const commentHash = String(row.comment_hash || "").trim();
     const embeddingVersion = String(row.embedding_version || "").trim();
     validateRequired_(
       {
         participant_id: participantId,
         exercise: exercise,
+        comment_hash: commentHash,
         embedding_version: embeddingVersion
       },
-      ["participant_id", "exercise", "embedding_version"]
+      ["participant_id", "exercise", "comment_hash", "embedding_version"]
     );
     return {
       participant_id: participantId,
       exercise: exercise,
+      comment_hash: commentHash,
       embedding_version: embeddingVersion,
       embedding_provider: String(row.embedding_provider || "").trim(),
       comment_text: String(row.comment_text || row.comment || "").trim(),
@@ -1167,7 +1336,7 @@ function normalizeEmbeddingsCacheRows_(rows) {
       embedding_vector_json: normalizeJsonStringField_(row.embedding_vector_json || row.embedding_vector || []),
       source_updated_at: String(row.source_updated_at || "").trim(),
       source_sheet_row_number: Number(row.source_sheet_row_number || 0),
-      cache_key: String(row.cache_key || [participantId, exercise, embeddingVersion].join("::")).trim(),
+      cache_key: String(row.cache_key || [participantId, exercise, commentHash, embeddingVersion].join("::")).trim(),
       updated_at: isoNow_()
     };
   });
@@ -1179,10 +1348,12 @@ function normalizeProjectionCacheRows_(rows, exercise, projectionVersion) {
   }
   return rows.map(function(row) {
     const participantId = String(row.participant_id || "").trim();
-    validateRequired_({ participant_id: participantId }, ["participant_id"]);
+    const commentHash = String(row.comment_hash || "").trim();
+    validateRequired_({ participant_id: participantId, comment_hash: commentHash }, ["participant_id", "comment_hash"]);
     return {
       participant_id: participantId,
       exercise: String(row.exercise || exercise || "").trim(),
+      comment_hash: commentHash,
       projection_version: String(row.projection_version || projectionVersion || "").trim(),
       embedding_provider: String(row.embedding_provider || "").trim(),
       reduction_provider: String(row.reduction_provider || "").trim(),
@@ -1204,6 +1375,47 @@ function normalizeJsonStringField_(value) {
     return value;
   }
   return JSON.stringify(value || []);
+}
+
+function hasProjectionCommentData_(row) {
+  return buildCombinedProjectionComment_(row) !== "" && String(row.prediction_output || "").trim() !== "" && String(row.prediction_output || "").trim() !== "{}";
+}
+
+function buildCombinedProjectionComment_(row) {
+  return [row.dataset_comment, row.analytics_comment, row.prediction_reflection]
+    .map(function(value) { return String(value || "").trim(); })
+    .filter(function(value) { return value !== ""; })
+    .join(" ")
+    .trim();
+}
+
+function normalizeCacheQueryFilters_(data) {
+  return {
+    exercise: String(data.exercise || "").trim(),
+    embedding_version: String(data.embedding_version || "").trim(),
+    projection_version: String(data.projection_version || "").trim(),
+    participant_ids: Array.isArray(data.participant_ids) ? data.participant_ids.map(function(value) { return String(value || "").trim(); }).filter(Boolean) : [],
+    comment_hashes: Array.isArray(data.comment_hashes) ? data.comment_hashes.map(function(value) { return String(value || "").trim(); }).filter(Boolean) : []
+  };
+}
+
+function rowMatchesCacheQuery_(row, filters, embeddingVersion, projectionVersion) {
+  if (filters.exercise && String(row.exercise || "").trim() !== filters.exercise) {
+    return false;
+  }
+  if (embeddingVersion && String(row.embedding_version || "").trim() !== embeddingVersion) {
+    return false;
+  }
+  if (projectionVersion && String(row.projection_version || "").trim() !== projectionVersion) {
+    return false;
+  }
+  if (filters.participant_ids.length > 0 && filters.participant_ids.indexOf(String(row.participant_id || "").trim()) === -1) {
+    return false;
+  }
+  if (filters.comment_hashes.length > 0 && filters.comment_hashes.indexOf(String(row.comment_hash || "").trim()) === -1) {
+    return false;
+  }
+  return true;
 }
 
 function stripRowNumber_(row) {

@@ -13,11 +13,14 @@
     "embedding_provider": "auto",
     "preferred_embedding_provider": "minilm",
     "fallback_embedding_provider": "fasttext",
+    "embedding_version": "minilm_clean_comment_v1",
+    "projection_version": "projection_cache_v1",
     "embedding_dimensions": 64,
     "minilm_model_name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "minilm_cache_folder": "",
     "fasttext_model_path": "",
-    "min_comment_length": 12
+    "min_comment_length": 12,
+    "source_snapshot_limit": 500
   },
   "modeling": {
     "random_state": 42,

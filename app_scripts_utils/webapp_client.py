@@ -135,6 +135,54 @@ class WebappSyncClient:
             },
         )
 
+    def query_projection_comments(self, *, exercise: str, limit_rows: int = 500) -> dict[str, Any]:
+        return self.post(
+            "query_projection_comments",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        participant_ids: list[str] | None = None,
+        comment_hashes: list[str] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "exercise": exercise,
+            "embedding_version": embedding_version,
+        }
+        if participant_ids:
+            payload["participant_ids"] = participant_ids
+        if comment_hashes:
+            payload["comment_hashes"] = comment_hashes
+        return self.post("query_embeddings_cache", payload)
+
+    def upsert_embeddings_cache(self, *, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return self.post("upsert_embeddings_cache", {"rows": rows})
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        participant_ids: list[str] | None = None,
+        comment_hashes: list[str] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "exercise": exercise,
+            "projection_version": projection_version,
+        }
+        if participant_ids:
+            payload["participant_ids"] = participant_ids
+        if comment_hashes:
+            payload["comment_hashes"] = comment_hashes
+        return self.post("query_projection_cache", payload)
+
+    def upsert_projection_cache(self, *, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return self.post("upsert_projection_cache", {"rows": rows})
+
     def rebuild_projection_cache(
         self,
         *,

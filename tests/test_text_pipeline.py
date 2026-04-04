@@ -9,7 +9,12 @@ import pytest
 
 from domain.models import CompletedComment
 from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingResult
-from services.text_pipeline import CommentAnalyticsService, DimensionalityReducer, TextCleaner
+from services.text_pipeline import (
+    CommentAnalyticsService,
+    DimensionalityReducer,
+    TextCleaner,
+    build_comment_hash,
+)
 
 
 class _EmbedderStub:
@@ -28,6 +33,77 @@ class _ReducerStub:
     def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
         del matrix
         return np.array([[1.0, 2.0, 3.0], [3.0, 2.0, 1.0]]), "umap"
+
+
+class _ReducerSingleStub:
+    def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
+        del matrix
+        return np.array([[9.0, 8.0, 7.0]]), "umap"
+
+
+class _RemoteSyncStub:
+    def __init__(
+        self,
+        *,
+        projection_comments: list[dict[str, Any]] | None = None,
+        embedding_rows: list[dict[str, Any]] | None = None,
+        projection_rows: list[dict[str, Any]] | None = None,
+    ) -> None:
+        self.projection_comments = projection_comments
+        self.embedding_rows = embedding_rows
+        self.projection_rows = projection_rows
+        self.saved_embeddings: list[dict[str, Any]] = []
+        self.saved_projections: list[dict[str, Any]] = []
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        del limit_rows
+        if self.projection_comments is None:
+            return None
+        return [row for row in self.projection_comments if row["exercise"] == exercise]
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        del embedding_version
+        if self.embedding_rows is None:
+            return None
+        return [
+            row
+            for row in self.embedding_rows
+            if row["exercise"] == exercise
+            and row["participant_id"] in participant_ids
+            and row["comment_hash"] in comment_hashes
+        ]
+
+    def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
+        self.saved_embeddings.extend(rows)
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        del projection_version
+        if self.projection_rows is None:
+            return None
+        return [
+            row
+            for row in self.projection_rows
+            if row["exercise"] == exercise
+            and row["participant_id"] in participant_ids
+            and row["comment_hash"] in comment_hashes
+        ]
+
+    def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
+        self.saved_projections.extend(rows)
 
 
 class _SinglePointEmbedderStub:
@@ -76,6 +152,13 @@ def test_cleaner_removes_noise() -> None:
     assert "https" not in cleaned
     assert "muy" not in cleaned
     assert "modelo" in cleaned
+
+
+def test_build_comment_hash_is_stable_for_equivalent_text() -> None:
+    first = build_comment_hash("¡El modelo fue MUY claro! https://bankify.test")
+    second = build_comment_hash("El modelo fue claro")
+
+    assert first == second
 
 
 def test_projection_builds_3d_points() -> None:
@@ -127,6 +210,7 @@ def test_projection_returns_origin_for_single_point() -> None:
             "public_alias": "P-001",
             "comment": "Solo había un comentario disponible",
             "clean_comment": "solo habia comentario disponible",
+            "comment_hash": build_comment_hash("solo habia comentario disponible", is_clean=True),
             "x": 0.0,
             "y": 0.0,
             "z": 0.0,
@@ -339,3 +423,96 @@ def test_minilm_provider_raises_clear_error_when_dependency_is_missing(
 
     with pytest.raises(RuntimeError, match="sentence-transformers"):
         provider.encode(["comentario de prueba"])
+
+
+def test_projection_build_for_exercise_reuses_remote_cache_without_recomputing() -> None:
+    clean_comment = "hallazgo cuota ingreso estable"
+    comment_hash = build_comment_hash(clean_comment, is_clean=True)
+    remote_sync = _RemoteSyncStub(
+        projection_comments=[
+            {
+                "participant_id": "a1",
+                "public_alias": "P-001",
+                "exercise": "default_risk",
+                "combined_comment": "Hallazgo cuota ingreso estable",
+                "updated_at": "2026-04-03T00:00:00Z",
+                "source_sheet_row_number": 7,
+            }
+        ],
+        embedding_rows=[
+            {
+                "participant_id": "a1",
+                "exercise": "default_risk",
+                "comment_hash": comment_hash,
+                "embedding_provider": "sentence_transformers_minilm",
+                "embedding_vector_json": "[0.1, 0.2, 0.3]",
+            }
+        ],
+        projection_rows=[
+            {
+                "participant_id": "a1",
+                "exercise": "default_risk",
+                "comment_hash": comment_hash,
+                "reduction_provider": "umap",
+                "x": 4.0,
+                "y": 5.0,
+                "z": 6.0,
+            }
+        ],
+    )
+
+    service = CommentAnalyticsService(
+        embedder=_SinglePointEmbedderStub(),
+        reducer=_ReducerSingleStub(),
+        remote_sync=remote_sync,
+        comments_config={
+            "embedding_version": "emb-v1",
+            "projection_version": "proj-v1",
+            "source_snapshot_limit": 20,
+        },
+    )
+
+    projection = service.build_projection_for_exercise("default_risk", "a1")
+
+    assert projection["points"][0]["x"] == 4.0
+    assert projection["reduction_provider"] == "umap"
+    assert remote_sync.saved_embeddings == []
+    assert remote_sync.saved_projections == []
+
+
+def test_projection_build_for_exercise_persists_missing_embedding_and_projection_cache() -> None:
+    remote_sync = _RemoteSyncStub(
+        projection_comments=[
+            {
+                "participant_id": "a1",
+                "public_alias": "P-001",
+                "exercise": "default_risk",
+                "combined_comment": "Hallazgo cuota ingreso estable en mora",
+                "updated_at": "2026-04-03T00:00:00Z",
+                "source_sheet_row_number": 7,
+            }
+        ],
+        embedding_rows=[],
+        projection_rows=[],
+    )
+
+    service = CommentAnalyticsService(
+        embedder=_SinglePointEmbedderStub(),
+        reducer=_ReducerSingleStub(),
+        remote_sync=remote_sync,
+        comments_config={
+            "embedding_version": "emb-v1",
+            "projection_version": "proj-v1",
+            "source_snapshot_limit": 20,
+        },
+    )
+
+    projection = service.build_projection_for_exercise("default_risk", "a1")
+
+    assert projection["points"][0]["x"] == 9.0
+    assert projection["embedding_version"] == "emb-v1"
+    assert projection["projection_version"] == "proj-v1"
+    assert len(remote_sync.saved_embeddings) == 1
+    assert remote_sync.saved_embeddings[0]["comment_hash"] == projection["points"][0]["comment_hash"]
+    assert len(remote_sync.saved_projections) == 1
+    assert remote_sync.saved_projections[0]["projection_version"] == "proj-v1"

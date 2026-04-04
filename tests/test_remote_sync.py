@@ -129,6 +129,112 @@ def test_apps_script_client_posts_expected_action_and_payload(
     assert "Remote sync completed successfully." in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("method_name", "expected_action", "payload", "expected_rows"),
+    [
+        (
+            "query_projection_comments",
+            "query_projection_comments",
+            {"exercise": "credit_approval", "limit_rows": 200},
+            [{"participant_id": "p-001"}],
+        ),
+        (
+            "query_embeddings_cache",
+            "query_embeddings_cache",
+            {
+                "exercise": "credit_approval",
+                "embedding_version": "emb-v1",
+                "participant_ids": ["p-001"],
+                "comment_hashes": ["hash-1"],
+            },
+            [{"participant_id": "p-001", "comment_hash": "hash-1"}],
+        ),
+        (
+            "query_projection_cache",
+            "query_projection_cache",
+            {
+                "exercise": "credit_approval",
+                "projection_version": "proj-v1",
+                "participant_ids": ["p-001"],
+                "comment_hashes": ["hash-1"],
+            },
+            [{"participant_id": "p-001", "comment_hash": "hash-1"}],
+        ),
+    ],
+)
+def test_apps_script_client_queries_cache_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+    method_name: str,
+    expected_action: str,
+    payload: dict[str, Any],
+    expected_rows: list[dict[str, Any]],
+) -> None:
+    captured_request: dict[str, Any] = {}
+
+    def fake_post(url: str, *, json: dict[str, Any], timeout: int) -> FakeResponse:
+        captured_request["url"] = url
+        captured_request["json"] = json
+        captured_request["timeout"] = timeout
+        return FakeResponse(ok=True, status_code=200, reason="OK", payload={"status": "success", "rows": expected_rows})
+
+    monkeypatch.setattr(
+        "services.remote_sync.load_app_config",
+        lambda: AppConfig(raw={"persistence": {"request_timeout_seconds": 9}}),
+    )
+    monkeypatch.setattr("services.remote_sync.get_script_url", lambda: "https://script.google.test")
+    monkeypatch.setattr("services.remote_sync.get_form_token", lambda: "form-token")
+    monkeypatch.setattr("services.remote_sync.requests.post", fake_post)
+
+    client = AppsScriptSyncClient()
+    result = getattr(client, method_name)(**payload)
+
+    assert result == expected_rows
+    assert captured_request == {
+        "url": "https://script.google.test",
+        "json": {"token": "form-token", "accion": expected_action, **payload},
+        "timeout": 9,
+    }
+
+
+@pytest.mark.parametrize(
+    ("method_name", "payload", "expected_action"),
+    [
+        ("upsert_embeddings_cache", {"rows": [{"participant_id": "p-001", "comment_hash": "h1"}]}, "upsert_embeddings_cache"),
+        ("upsert_projection_cache", {"rows": [{"participant_id": "p-001", "comment_hash": "h1"}]}, "upsert_projection_cache"),
+    ],
+)
+def test_apps_script_client_upserts_cache_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+    method_name: str,
+    payload: dict[str, Any],
+    expected_action: str,
+) -> None:
+    captured_request: dict[str, Any] = {}
+
+    def fake_post(url: str, *, json: dict[str, Any], timeout: int) -> FakeResponse:
+        captured_request["url"] = url
+        captured_request["json"] = json
+        captured_request["timeout"] = timeout
+        return FakeResponse(ok=True, status_code=200, reason="OK")
+
+    monkeypatch.setattr(
+        "services.remote_sync.load_app_config",
+        lambda: AppConfig(raw={"persistence": {"request_timeout_seconds": 9}}),
+    )
+    monkeypatch.setattr("services.remote_sync.get_script_url", lambda: "https://script.google.test")
+    monkeypatch.setattr("services.remote_sync.get_form_token", lambda: "form-token")
+    monkeypatch.setattr("services.remote_sync.requests.post", fake_post)
+
+    client = AppsScriptSyncClient()
+    getattr(client, method_name)(**payload)
+
+    assert captured_request == {
+        "url": "https://script.google.test",
+        "json": {"token": "form-token", "accion": expected_action, **payload},
+        "timeout": 9,
+    }
+
+
 def test_apps_script_client_logs_warning_when_response_is_not_json(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

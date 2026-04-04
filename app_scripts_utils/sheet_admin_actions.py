@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
+import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +44,11 @@ LEGACY_ROW_FIELDS = {
     "feedback_improvement_ideas",
     "selected_exercise",
     "completed_at",
+}
+SPANISH_STOPWORDS = {
+    "de", "la", "el", "los", "las", "que", "y", "o", "en", "un", "una", "para", "por",
+    "con", "del", "al", "se", "su", "sus", "me", "mi", "mis", "es", "son", "muy", "mas",
+    "pero", "porque", "como", "lo", "le", "les", "ha", "han", "fue", "ser", "estar",
 }
 
 
@@ -270,6 +278,25 @@ def load_rows_payload(file_path: Path) -> list[dict[str, Any]]:
     return normalized_rows
 
 
+def clean_comment_for_hash(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    normalized = normalized.lower()
+    normalized = re.sub(r"https?://\S+|www\.\S+", " ", normalized)
+    normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    tokens = [token for token in normalized.split() if token not in SPANISH_STOPWORDS]
+    return " ".join(tokens)
+
+
+def ensure_comment_hash(row: dict[str, Any]) -> str:
+    if str(row.get("comment_hash", "")).strip():
+        return str(row["comment_hash"]).strip()
+    source = str(row.get("clean_comment") or row.get("comment_text") or row.get("comment") or "").strip()
+    if not source:
+        raise ValueError("Cada fila de cache requiere comment_hash o texto base para derivarlo.")
+    return hashlib.sha256(clean_comment_for_hash(source).encode("utf-8")).hexdigest()
+
+
 def build_legacy_row_selectors_from_snapshot(
     snapshot_payload: dict[str, Any],
     *,
@@ -455,6 +482,7 @@ def build_backfill_embeddings_cache_payload(args: argparse.Namespace) -> dict[st
             raise ValueError("Cada fila de embeddings_cache requiere participant_id.")
         normalized_row = dict(row)
         normalized_row["participant_id"] = participant_id
+        normalized_row["comment_hash"] = ensure_comment_hash(normalized_row)
         normalized_row["exercise"] = str(row.get("exercise") or args.exercise).strip()
         normalized_row["embedding_version"] = str(
             row.get("embedding_version") or args.embedding_version
@@ -477,6 +505,7 @@ def build_rebuild_projection_cache_payload(args: argparse.Namespace) -> dict[str
             raise ValueError("Cada fila de projection_cache requiere participant_id.")
         normalized_row = dict(row)
         normalized_row["participant_id"] = participant_id
+        normalized_row["comment_hash"] = ensure_comment_hash(normalized_row)
         normalized_row["exercise"] = str(row.get("exercise") or args.exercise).strip()
         normalized_row["projection_version"] = str(
             row.get("projection_version") or args.projection_version

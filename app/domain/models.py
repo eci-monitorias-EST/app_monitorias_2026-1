@@ -144,6 +144,10 @@ class CompletedComment:
     exercise: str
     combined_comment: str
     current_user: bool = False
+    clean_comment: str = ""
+    comment_hash: str = ""
+    source_updated_at: str = ""
+    source_sheet_row_number: int = 0
 
 
 @dataclass

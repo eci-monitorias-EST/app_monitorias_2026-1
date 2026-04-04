@@ -26,6 +26,35 @@ class RemoteSyncClient:
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
         return None
 
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        return None
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        return None
+
+    def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
+        return None
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        return None
+
+    def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
+        return None
+
 
 class NoopRemoteSyncClient(RemoteSyncClient):
     pass
@@ -46,7 +75,7 @@ class AppsScriptSyncClient(RemoteSyncClient):
             missing_fields.append("token")
         return tuple(missing_fields)
 
-    def _post(self, action: str, payload: dict[str, Any]) -> None:
+    def _request(self, action: str, payload: dict[str, Any]) -> dict[str, Any] | None:
         missing_fields = self._get_missing_configuration_fields()
         if missing_fields:
             LOGGER.warning(
@@ -113,18 +142,76 @@ class AppsScriptSyncClient(RemoteSyncClient):
                 "remote_mode": response_payload.get("mode", ""),
             },
         )
+        return response_payload
 
     def sync_participant(self, participant_payload: dict[str, Any]) -> None:
-        self._post("upsert_sesion", participant_payload)
+        self._request("upsert_sesion", participant_payload)
 
     def sync_progress(self, progress_payload: dict[str, Any]) -> None:
-        self._post("upsert_respuesta", progress_payload)
+        self._request("upsert_respuesta", progress_payload)
 
     def sync_feedback(self, feedback_payload: dict[str, Any]) -> None:
-        self._post("upsert_feedback", feedback_payload)
+        self._request("upsert_feedback", feedback_payload)
 
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
-        self._post("marcar_completado", completion_payload)
+        self._request("marcar_completado", completion_payload)
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_projection_comments",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_embeddings_cache",
+            {
+                "exercise": exercise,
+                "embedding_version": embedding_version,
+                "participant_ids": participant_ids,
+                "comment_hashes": comment_hashes,
+            },
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
+        self._request("upsert_embeddings_cache", {"rows": rows})
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        participant_ids: list[str],
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_projection_cache",
+            {
+                "exercise": exercise,
+                "projection_version": projection_version,
+                "participant_ids": participant_ids,
+                "comment_hashes": comment_hashes,
+            },
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
+        self._request("upsert_projection_cache", {"rows": rows})
 
 
 def build_remote_sync_client() -> RemoteSyncClient:

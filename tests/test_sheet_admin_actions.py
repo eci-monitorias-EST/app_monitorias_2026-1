@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 from argparse import Namespace
 from pathlib import Path
@@ -177,7 +178,7 @@ def test_build_rebuild_projection_cache_payload_normalizes_rows_file(tmp_path: P
     rows_file.write_text(
         (
             '{"rows": ['
-            '{"participant_id": "p-001", "public_alias": "A", "x": 1.0, "y": 2.0, "z": 3.0}'
+            '{"participant_id": "p-001", "public_alias": "A", "clean_comment": "comentario base", "x": 1.0, "y": 2.0, "z": 3.0}'
             ']}'
         ),
         encoding="utf-8",
@@ -203,6 +204,8 @@ def test_build_rebuild_projection_cache_payload_normalizes_rows_file(tmp_path: P
         {
             "participant_id": "p-001",
             "public_alias": "A",
+            "clean_comment": "comentario base",
+            "comment_hash": hashlib.sha256("comentario base".encode("utf-8")).hexdigest(),
             "x": 1.0,
             "y": 2.0,
             "z": 3.0,
@@ -240,17 +243,61 @@ def test_run_command_supports_local_only_mode(tmp_path: Path) -> None:
     assert result == {
         "status": "local_only",
         "action": "backfill_embeddings_cache",
-        "payload": {
-            "dry_run": True,
-            "rows": [
-                {
-                    "participant_id": "p-001",
-                    "comment_text": "texto",
-                    "embedding_vector": [0.1, 0.2],
-                    "exercise": "credit_approval",
-                    "embedding_version": "emb-v1",
-                    "embedding_provider": "minilm",
+            "payload": {
+                "dry_run": True,
+                "rows": [
+                    {
+                        "participant_id": "p-001",
+                        "comment_hash": hashlib.sha256("texto".encode("utf-8")).hexdigest(),
+                        "comment_text": "texto",
+                        "embedding_vector": [0.1, 0.2],
+                        "exercise": "credit_approval",
+                        "embedding_version": "emb-v1",
+                        "embedding_provider": "minilm",
                 }
             ],
         },
+    }
+
+
+def test_webapp_client_posts_query_embeddings_cache_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_webapp_client_module()
+    captured: dict[str, Any] = {}
+
+    class _ResponseStub:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, Any]:
+            return {"status": "success", "rows": []}
+
+    def _fake_post(url: str, *, json: dict[str, Any], timeout: int) -> _ResponseStub:
+        captured["url"] = url
+        captured["json"] = json
+        captured["timeout"] = timeout
+        return _ResponseStub()
+
+    monkeypatch.setattr(requests, "post", _fake_post)
+
+    client = module.WebappSyncClient(url="https://example.test/webapp", token="token-123", timeout=15)
+
+    response = client.query_embeddings_cache(
+        exercise="credit_approval",
+        embedding_version="emb-v1",
+        participant_ids=["p-001"],
+        comment_hashes=["hash-1"],
+    )
+
+    assert response == {"status": "success", "rows": []}
+    assert captured == {
+        "url": "https://example.test/webapp",
+        "json": {
+            "token": "token-123",
+            "accion": "query_embeddings_cache",
+            "exercise": "credit_approval",
+            "embedding_version": "emb-v1",
+            "participant_ids": ["p-001"],
+            "comment_hashes": ["hash-1"],
+        },
+        "timeout": 15,
     }

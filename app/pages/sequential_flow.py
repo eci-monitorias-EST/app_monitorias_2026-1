@@ -509,9 +509,11 @@ class SequentialLearningFlow:
         if not record or bundle is None:
             return
         st.title("Visualización 3D de comentarios")
-        comments = self.container.store.list_completed_comments(bundle.exercise, record.participant_id)
         try:
-            projection = self.container.comments.build_projection(comments)
+            projection = self.container.comments.build_projection_for_exercise(
+                bundle.exercise,
+                record.participant_id,
+            )
         except RuntimeError as exc:
             st.error(str(exc))
             st.caption(

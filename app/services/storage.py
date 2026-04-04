@@ -137,6 +137,7 @@ class JsonStateStore:
                     exercise=exercise,
                     combined_comment=combined,
                     current_user=record.participant_id == current_participant_id,
+                    source_updated_at=progress.updated_at,
                 )
             )
         return comments
