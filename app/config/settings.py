@@ -1,22 +1,29 @@
+from __future__ import annotations
+
+import os
+
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
 
 
-DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybLfO1BowhPgSz-z1BwY3mTBX8B9QZntblY_EbbusslFt_YRts3c4ygwl24YBRuXVGYQ/exec"
-DEFAULT_FORM_TOKEN = "mi_token_123"
-DEFAULT_TIMEOUT_SECONDS = 10
+DEFAULT_SCRIPT_URL = ""
+DEFAULT_FORM_TOKEN = ""
+DEFAULT_TIMEOUT_SECONDS = int(os.getenv("APP_TIMEOUT_SECONDS", "10"))
 
 
-def _get_secret_or_default(key: str, default: str) -> str:
+def _get_secret_or_env(key: str, env_key: str, default: str) -> str:
+    env_value = os.getenv(env_key)
+    if env_value:
+        return env_value
     try:
-        return st.secrets[key]
+        return str(st.secrets[key])
     except (StreamlitSecretNotFoundError, KeyError):
         return default
 
 
 def get_script_url() -> str:
-    return _get_secret_or_default("google_script_url", DEFAULT_SCRIPT_URL)
+    return _get_secret_or_env("google_script_url", "GOOGLE_SCRIPT_URL", DEFAULT_SCRIPT_URL)
 
 
 def get_form_token() -> str:
-    return _get_secret_or_default("google_script_token", DEFAULT_FORM_TOKEN)
+    return _get_secret_or_env("google_script_token", "GOOGLE_SCRIPT_TOKEN", DEFAULT_FORM_TOKEN)

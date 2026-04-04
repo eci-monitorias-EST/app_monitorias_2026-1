@@ -1,0 +1,195 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import Any
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class ExerciseOption:
+    CREDIT_APPROVAL = "credit_approval"
+    DEFAULT_RISK = "default_risk"
+
+    LABELS = {
+        CREDIT_APPROVAL: "Aprobación de crédito",
+        DEFAULT_RISK: "Probabilidad de mora",
+    }
+
+
+@dataclass
+class VariableDescriptor:
+    key: str
+    label: str
+    description: str
+    variable_type: str
+    source: str
+    official_name: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class ExerciseProgress:
+    exercise: str
+    dataset_comment: str = ""
+    analytics_comment: str = ""
+    prediction_reflection: str = ""
+    prediction_inputs: dict[str, Any] = field(default_factory=dict)
+    prediction_output: dict[str, Any] = field(default_factory=dict)
+    feedback: FeedbackRecord | None = None
+    completed_at: str | None = None
+    updated_at: str = field(default_factory=utc_now_iso)
+
+    def merge(self, payload: dict[str, Any]) -> None:
+        for key, value in payload.items():
+            if value is not None:
+                setattr(self, key, value)
+        self.updated_at = utc_now_iso()
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class FeedbackRecord:
+    rating: int
+    summary: str
+    missing_topics: str = ""
+    improvement_ideas: str = ""
+    updated_at: str = field(default_factory=utc_now_iso)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class ParticipantRecord:
+    participant_id: str
+    access_code_hash: str
+    public_alias: str
+    profile: dict[str, Any]
+    access_code_display: str = ""
+    selected_exercise: str | None = None
+    exercise_progress: dict[str, ExerciseProgress] = field(default_factory=dict)
+    created_at: str = field(default_factory=utc_now_iso)
+    updated_at: str = field(default_factory=utc_now_iso)
+
+    @property
+    def access_key_hash(self) -> str:
+        return self.access_code_hash
+
+    def upsert_progress(self, exercise: str, payload: dict[str, Any]) -> ExerciseProgress:
+        progress = self.exercise_progress.get(exercise)
+        if progress is None:
+            progress = ExerciseProgress(exercise=exercise)
+            self.exercise_progress[exercise] = progress
+        progress.merge(payload)
+        self.updated_at = utc_now_iso()
+        return progress
+
+    def set_feedback(self, exercise: str, feedback: FeedbackRecord) -> None:
+        progress = self.upsert_progress(exercise, {})
+        progress.feedback = feedback
+        progress.updated_at = utc_now_iso()
+        self.updated_at = utc_now_iso()
+
+    def mark_completed(self, exercise: str) -> None:
+        progress = self.upsert_progress(exercise, {})
+        progress.completed_at = utc_now_iso()
+        progress.updated_at = progress.completed_at
+        self.updated_at = progress.completed_at
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["exercise_progress"] = {
+            key: value.to_dict() for key, value in self.exercise_progress.items()
+        }
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ParticipantRecord":
+        progress = {
+            key: ExerciseProgress(**value)
+            for key, value in payload.get("exercise_progress", {}).items()
+        }
+        feedback_payload = payload.get("feedback")
+        completed_at = payload.get("completed_at")
+        exercise_for_legacy_payload = payload.get("selected_exercise")
+        if exercise_for_legacy_payload is None and progress:
+            exercise_for_legacy_payload = next(iter(progress))
+        if exercise_for_legacy_payload is not None and (feedback_payload or completed_at):
+            exercise_progress = progress.get(exercise_for_legacy_payload)
+            if exercise_progress is None:
+                exercise_progress = ExerciseProgress(exercise=exercise_for_legacy_payload)
+                progress[exercise_for_legacy_payload] = exercise_progress
+            if feedback_payload and exercise_progress.feedback is None:
+                exercise_progress.feedback = FeedbackRecord(**feedback_payload)
+            if completed_at and exercise_progress.completed_at is None:
+                exercise_progress.completed_at = completed_at
+        return cls(
+            participant_id=payload["participant_id"],
+            access_code_hash=payload.get("access_code_hash", payload.get("access_key_hash", "")),
+            public_alias=payload["public_alias"],
+            profile=payload.get("profile", {}),
+            access_code_display=payload.get("access_code_display", ""),
+            selected_exercise=payload.get("selected_exercise"),
+            exercise_progress=progress,
+            created_at=payload.get("created_at", utc_now_iso()),
+            updated_at=payload.get("updated_at", utc_now_iso()),
+        )
+
+
+@dataclass
+class CompletedComment:
+    participant_id: str
+    public_alias: str
+    exercise: str
+    combined_comment: str
+    current_user: bool = False
+    clean_comment: str = ""
+    comment_hash: str = ""
+    source_updated_at: str = ""
+    source_sheet_row_number: int = 0
+    comment_type: str = ""
+    comment_type_label: str = ""
+
+
+@dataclass
+class CommentEvent:
+    participant_id: str
+    public_alias: str
+    exercise: str
+    comment_type: str
+    comment_text: str
+    clean_comment: str
+    comment_hash: str
+    updated_at: str
+    source_sheet_row_number: int = 0
+    is_test_data: bool = False
+    test_batch_id: str = ""
+    data_origin: str = "app_runtime"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def logical_key(self) -> tuple[str, str, str]:
+        return (self.participant_id, self.exercise, self.comment_type)
+
+
+@dataclass
+class PredictionResult:
+    exercise: str
+    probability: float
+    label: str
+    features: dict[str, Any]
+    provider: str
+    local_explanations: dict[str, Any]
+    global_explanations: dict[str, Any]
+    pedagogical_summary: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)

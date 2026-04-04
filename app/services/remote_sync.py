@@ -1,0 +1,233 @@
+from __future__ import annotations
+
+import logging
+from json import JSONDecodeError
+from typing import Any
+
+import requests
+
+from config.settings import get_form_token, get_script_url
+from services.configuration import load_app_config
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+class RemoteSyncClient:
+    def sync_participant(self, participant_payload: dict[str, Any]) -> None:
+        return None
+
+    def sync_progress(self, progress_payload: dict[str, Any]) -> None:
+        return None
+
+    def sync_feedback(self, feedback_payload: dict[str, Any]) -> None:
+        return None
+
+    def sync_comment_events(self, comment_events_payload: dict[str, Any]) -> None:
+        return None
+
+    def sync_completion(self, completion_payload: dict[str, Any]) -> None:
+        return None
+
+    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        return None
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        return None
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        return None
+
+    def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
+        return None
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        return None
+
+    def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
+        return None
+
+
+class NoopRemoteSyncClient(RemoteSyncClient):
+    pass
+
+
+class AppsScriptSyncClient(RemoteSyncClient):
+    def __init__(self) -> None:
+        config = load_app_config()
+        self.timeout = int(config.persistence.get("request_timeout_seconds", 10))
+        self.url = get_script_url()
+        self.token = get_form_token()
+
+    def _get_missing_configuration_fields(self) -> tuple[str, ...]:
+        missing_fields: list[str] = []
+        if not self.url:
+            missing_fields.append("url")
+        if not self.token:
+            missing_fields.append("token")
+        return tuple(missing_fields)
+
+    def _request(self, action: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+        missing_fields = self._get_missing_configuration_fields()
+        if missing_fields:
+            LOGGER.warning(
+                "Skipping remote sync due to missing configuration.",
+                extra={"action": action, "missing_fields": missing_fields},
+            )
+            return
+
+        try:
+            response = requests.post(
+                self.url,
+                json={"token": self.token, "accion": action, **payload},
+                timeout=self.timeout,
+            )
+        except requests.RequestException:
+            LOGGER.warning(
+                "Remote sync request failed; continuing with local-first flow.",
+                exc_info=True,
+                extra={"action": action, "timeout_seconds": self.timeout},
+            )
+            return
+
+        if not response.ok:
+            LOGGER.warning(
+                "Remote sync returned a non-success response; continuing with local-first flow.",
+                extra={
+                    "action": action,
+                    "status_code": response.status_code,
+                    "reason": response.reason,
+                },
+            )
+            return
+
+        try:
+            response_payload = response.json()
+        except (ValueError, JSONDecodeError):
+            LOGGER.warning(
+                "Remote sync returned a non-JSON response; continuing with local-first flow.",
+                extra={
+                    "action": action,
+                    "status_code": response.status_code,
+                    "content_type": response.headers.get("Content-Type", ""),
+                },
+            )
+            return
+
+        if response_payload.get("status") != "success":
+            LOGGER.warning(
+                "Remote sync returned an application-level error; continuing with local-first flow.",
+                extra={
+                    "action": action,
+                    "status_code": response.status_code,
+                    "remote_status": response_payload.get("status"),
+                    "remote_message": response_payload.get("message", ""),
+                },
+            )
+            return
+
+        LOGGER.info(
+            "Remote sync completed successfully.",
+            extra={
+                "action": action,
+                "status_code": response.status_code,
+                "remote_mode": response_payload.get("mode", ""),
+            },
+        )
+        return response_payload
+
+    def sync_participant(self, participant_payload: dict[str, Any]) -> None:
+        self._request("upsert_sesion", participant_payload)
+
+    def sync_progress(self, progress_payload: dict[str, Any]) -> None:
+        self._request("upsert_respuesta", progress_payload)
+
+    def sync_feedback(self, feedback_payload: dict[str, Any]) -> None:
+        self._request("upsert_feedback", feedback_payload)
+
+    def sync_comment_events(self, comment_events_payload: dict[str, Any]) -> None:
+        self._request("upsert_comment_events", comment_events_payload)
+
+    def sync_completion(self, completion_payload: dict[str, Any]) -> None:
+        self._request("marcar_completado", completion_payload)
+
+    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_comment_events",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_projection_comments",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def query_embeddings_cache(
+        self,
+        *,
+        exercise: str,
+        embedding_version: str,
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_embeddings_cache",
+            {
+                "exercise": exercise,
+                "embedding_version": embedding_version,
+                "comment_hashes": comment_hashes,
+            },
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
+        self._request("upsert_embeddings_cache", {"rows": rows})
+
+    def query_projection_cache(
+        self,
+        *,
+        exercise: str,
+        projection_version: str,
+        comment_hashes: list[str],
+    ) -> list[dict[str, Any]] | None:
+        payload = self._request(
+            "query_projection_cache",
+            {
+                "exercise": exercise,
+                "projection_version": projection_version,
+                "comment_hashes": comment_hashes,
+            },
+        )
+        if payload is None:
+            return None
+        return list(payload.get("rows", []))
+
+    def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
+        self._request("upsert_projection_cache", {"rows": rows})
+
+
+def build_remote_sync_client() -> RemoteSyncClient:
+    config = load_app_config()
+    if config.persistence.get("sync_to_apps_script"):
+        return AppsScriptSyncClient()
+    return NoopRemoteSyncClient()
