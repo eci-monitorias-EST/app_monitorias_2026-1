@@ -48,6 +48,9 @@ Capas esperadas:
 - `app/components/`: piezas visuales reutilizables.
 - `app/config/settings.py`: lectura de secretos y parámetros de conexión.
 - `app/services/data_loader.py`: carga de datasets y utilidades de acceso a datos.
+- `app_scripts_utils/synthetic_sheet_imputation.py`: flujo batch para sembrar datos sintéticos, renderizar HTML 3D y borrar lotes de prueba por `test_batch_id`.
+- `app_scripts_utils/sheet_snapshot_export.py`: exporta snapshots controlados de hojas remotas para auditoría local.
+- `app_scripts_utils/sheet_admin_actions.py`: CLI para normalizar legacy, poblar caches y operar mantenimiento remoto del Sheet.
 - `apps_script_completo.txt`: versión en texto del Apps Script que actúa como integración con Google Sheets.
 
 ## Flujo Funcional
@@ -76,13 +79,83 @@ Supuestos adoptados:
 - La retroalimentación final también debe ser única por sesión.
 - Los comentarios anónimos para visualización 3D se agregan por ejercicio y se procesan en lote cuando el usuario completa la actividad.
 
+### Legacy: qué significa en este proyecto
+
+En este repositorio llamamos `legacy` a filas viejas escritas con contratos anteriores del Apps Script o de la app, antes de que el esquema actual se estabilizara.
+
+Ejemplos de síntomas legacy detectados en snapshots reales:
+
+- columnas corridas, donde `is_test_data` contiene un timestamp o `updated_at` queda vacío;
+- feedback con `exercise` numérico y `rating` textual;
+- registros de control donde `exercise` quedó como `completed` en vez de tener una columna `status` coherente;
+- comentarios parciales guardados como varias filas separadas cuando hoy el flujo prefiere respuestas consolidadas.
+
+El objetivo de las acciones administrativas no es “tocar por tocar”, sino:
+
+- identificar filas legacy,
+- corregirlas o archivarlas con criterio,
+- y evitar que contaminen caches nuevas como `embeddings_cache` y `projection_cache`.
+
 Contrato recomendado para la hoja o backend:
 
 - `sesiones`: un registro por participante/sesión.
 - `respuestas`: respuestas estructuradas por ejercicio.
-- `comentarios`: comentarios de texto para limpieza, embeddings y UMAP.
+- `historial_comentarios`: auditoría/histórico de comentarios de texto.
 - `feedback`: retroalimentación final.
 - `control_ingreso`: registro de control para evitar duplicados y facilitar recuperación.
+- `embeddings_cache`: cache de embeddings por `participant_id + exercise + comment_hash`.
+- `projection_cache`: cache de coordenadas 3D por `participant_id + exercise + comment_hash`.
+
+### Estrategia actual recomendada para Streamlit Community Cloud
+
+Dado que la app se desplegará en Streamlit Community Cloud, el filesystem local de la app no debe tratarse como fuente principal de verdad para datos de usuarios. La estrategia recomendada es:
+
+1. `st.session_state` para datos transitorios de la sesión actual.
+2. Google Sheets + Apps Script como persistencia remota principal gratuita.
+3. Escrituras **consolidadas**, no una llamada remota por cada campo.
+4. `upsert` idempotente por `participant_id + exercise`.
+5. batching/chunks para operaciones masivas o reprocesos.
+6. retry/backoff para lecturas/escrituras remotas.
+7. caches remotos (`embeddings_cache`, `projection_cache`) y caches locales (`st.cache_data`, `st.cache_resource`) para evitar recomputaciones costosas.
+
+## Visualización 3D y caches
+
+Para que el gráfico 3D sea rápido y siga siendo gratis en Streamlit Cloud, el flujo recomendado es:
+
+1. Guardar una respuesta consolidada por ejercicio.
+2. Generar `comment_hash` del comentario combinado.
+3. Revisar `embeddings_cache`:
+   - si el hash ya existe, reutilizar el embedding;
+   - si no, calcular MiniLM y guardar el vector.
+4. Revisar `projection_cache`:
+   - si ya existe la proyección para ese hash, reutilizarla;
+   - si no, proyectar y guardar.
+5. Resaltar en el gráfico al usuario actual comparando `participant_id` del punto con el `participant_id` de la sesión activa.
+
+### Hojas auxiliares sugeridas
+
+#### `embeddings_cache`
+
+- `participant_id`
+- `exercise`
+- `comment_hash`
+- `clean_comment`
+- `embedding_model`
+- `embedding_vector_json`
+- `updated_at`
+
+#### `projection_cache`
+
+- `participant_id`
+- `public_alias`
+- `exercise`
+- `comment_hash`
+- `x`
+- `y`
+- `z`
+- `projection_version`
+- `reducer_provider`
+- `updated_at`
 
 ## Configuración
 
@@ -170,6 +243,146 @@ Si Apps Script se convierte en cuello de botella, la mitigación recomendada es:
 - cachear lecturas frecuentes,
 - usar una hoja de control de sesiones,
 - y mantener una capa de persistencia intermedia con `upsert`.
+
+## Herramientas administrativas del Sheet
+
+El proyecto incluye CLIs para inspeccionar y administrar el contenido remoto del Google Sheet sin depender de la UI de Google Sheets.
+
+### Exportar snapshots de hojas
+
+```bash
+poetry run python app_scripts_utils/sheet_snapshot_export.py \
+  --sheet sesiones \
+  --sheet respuestas \
+  --sheet historial_comentarios \
+  --sheet feedback \
+  --sheet control_ingreso \
+  --sheet embeddings_cache \
+  --sheet projection_cache \
+  --limit-rows 20 \
+  --snapshot-label current-sheet-audit
+```
+
+Esto exporta JSON/CSV locales para auditoría y genera un manifest reutilizable.
+
+### Acciones administrativas remotas
+
+#### `fix-legacy-rows`
+
+Sirve para corregir filas detectadas como legacy a partir de un snapshot exportado.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  fix-legacy-rows \
+  --snapshot data/processed/sheet_snapshots/current-sheet-audit-manifest.json
+```
+
+Con `--execute` aplica cambios reales.
+
+#### `normalize-feedback-schema`
+
+Sirve para normalizar filas de `feedback` que quedaron con columnas corridas o contratos viejos.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  normalize-feedback-schema \
+  --snapshot data/processed/sheet_snapshots/current-sheet-audit-manifest.json \
+  --exercise credit_approval
+```
+
+#### `archive-legacy-rows`
+
+Sirve para mover o marcar filas legacy con una razón explícita, evitando que sigan contaminando lectura/caches.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  archive-legacy-rows \
+  --snapshot data/processed/sheet_snapshots/current-sheet-audit-manifest.json \
+  --archive-reason legacy_snapshot_cleanup \
+  --execute \
+  --confirm-phrase ARCHIVE_LEGACY_ROWS
+```
+
+#### `clear-sheet-rows`
+
+Sirve para limpiar filas específicas de una hoja auxiliar, por ejemplo `projection_cache` para una versión de proyección.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  clear-sheet-rows \
+  --sheet projection_cache \
+  --exercise credit_approval \
+  --projection-version projection-v3 \
+  --execute \
+  --confirm-phrase CLEAR_SHEET_ROWS
+```
+
+#### `backfill-embeddings-cache`
+
+Sirve para poblar `embeddings_cache` con embeddings ya calculados a partir de un archivo intermedio de filas preparadas.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  backfill-embeddings-cache \
+  --rows-file tmp/embeddings_rows.json \
+  --exercise credit_approval \
+  --embedding-version emb-v1 \
+  --embedding-provider minilm \
+  --execute
+```
+
+#### `rebuild-projection-cache`
+
+Sirve para reconstruir `projection_cache` desde un archivo con puntos ya proyectados.
+
+```bash
+poetry run python app_scripts_utils/sheet_admin_actions.py \
+  rebuild-projection-cache \
+  --rows-file tmp/projection_rows.json \
+  --exercise credit_approval \
+  --projection-version projection-v3 \
+  --embedding-provider minilm \
+  --reduction-provider umap \
+  --execute \
+  --confirm-phrase REBUILD_PROJECTION_CACHE
+```
+
+## Flujo sintético de prueba a gran escala
+
+Para sembrar datos sintéticos, generar HTML 3D y luego borrarlos por lote:
+
+```bash
+poetry run python app_scripts_utils/synthetic_sheet_imputation.py \
+  --minimum-records 100 \
+  seed \
+  --test-batch-id demo-lote-100 \
+  --chunk-size 20
+```
+
+Render HTML 3D por ejercicio:
+
+```bash
+poetry run python app_scripts_utils/synthetic_sheet_imputation.py render --test-batch-id demo-lote-100 --exercise default_risk
+poetry run python app_scripts_utils/synthetic_sheet_imputation.py render --test-batch-id demo-lote-100 --exercise credit_approval
+```
+
+Simulación de borrado:
+
+```bash
+poetry run python app_scripts_utils/synthetic_sheet_imputation.py --timeout 120 delete-dry-run --test-batch-id demo-lote-100
+```
+
+Borrado real (solo con confirmación explícita):
+
+```bash
+poetry run python app_scripts_utils/synthetic_sheet_imputation.py \
+  --timeout 120 \
+  delete \
+  --test-batch-id demo-lote-100 \
+  --execute \
+  --verify-attempts 6 \
+  --verify-backoff-seconds 2
+```
 
 ## Ejecución Local
 

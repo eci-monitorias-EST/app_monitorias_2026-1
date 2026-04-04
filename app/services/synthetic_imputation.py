@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -72,6 +73,17 @@ class SyntheticBatch:
     @property
     def exercises(self) -> tuple[str, ...]:
         return tuple(sorted({record.exercise for record in self.records}))
+
+
+@dataclass(frozen=True)
+class SyntheticSeedChunk:
+    chunk_index: int
+    total_chunks: int
+    records: list[SyntheticSeedRecord]
+
+    @property
+    def records_count(self) -> int:
+        return len(self.records)
 
 
 class DatasetCatalogFeatureResolver:
@@ -175,7 +187,7 @@ class SyntheticBatchBuilder:
         return SyntheticBatch(test_batch_id=test_batch_id, records=records)
 
 
-def load_synthetic_scenarios(path: Path) -> list[SyntheticScenarioSpec]:
+def load_synthetic_scenarios(path: Path, *, minimum_records: int = 100) -> list[SyntheticScenarioSpec]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     raw_scenarios = payload.get("participants", [])
     scenarios: list[SyntheticScenarioSpec] = []
@@ -198,7 +210,41 @@ def load_synthetic_scenarios(path: Path) -> list[SyntheticScenarioSpec]:
                 ),
             )
         )
-    return scenarios
+    return expand_scenarios_to_minimum(scenarios, minimum_records=minimum_records)
+
+
+def expand_scenarios_to_minimum(
+    scenarios: list[SyntheticScenarioSpec],
+    *,
+    minimum_records: int,
+) -> list[SyntheticScenarioSpec]:
+    if minimum_records <= 0:
+        raise ValueError("minimum_records debe ser mayor que cero.")
+    if not scenarios:
+        raise ValueError("Se requiere al menos un escenario base para expandir datos sintéticos.")
+    if len(scenarios) >= minimum_records:
+        return scenarios
+
+    indexed_scenarios = list(enumerate(scenarios, start=1))
+    indexed_by_exercise = _group_indexed_scenarios_by_exercise(indexed_scenarios)
+    if {"default_risk", "credit_approval"}.issubset(indexed_by_exercise):
+        target_counts = _build_balanced_target_counts(
+            minimum_records=minimum_records,
+            exercises=("default_risk", "credit_approval"),
+        )
+        expanded_by_exercise = {
+            exercise: _expand_indexed_scenarios_to_count(
+                indexed_by_exercise[exercise],
+                target_count=target_counts[exercise],
+            )
+            for exercise in ("default_risk", "credit_approval")
+        }
+        return _interleave_expanded_scenarios(
+            expanded_by_exercise["default_risk"],
+            expanded_by_exercise["credit_approval"],
+        )
+
+    return _expand_indexed_scenarios_to_count(indexed_scenarios, target_count=minimum_records)
 
 
 def build_projection_comments(
@@ -308,6 +354,54 @@ def build_delete_batch_payload(test_batch_id: str, *, dry_run: bool) -> dict[str
     return payload
 
 
+def chunk_synthetic_batch(batch: SyntheticBatch, *, chunk_size: int) -> list[SyntheticSeedChunk]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size debe ser mayor que cero.")
+    if not batch.records:
+        return []
+
+    chunks: list[SyntheticSeedChunk] = []
+    total_chunks = math.ceil(len(batch.records) / chunk_size)
+    for chunk_index, start in enumerate(range(0, len(batch.records), chunk_size), start=1):
+        chunks.append(
+            SyntheticSeedChunk(
+                chunk_index=chunk_index,
+                total_chunks=total_chunks,
+                records=batch.records[start : start + chunk_size],
+            )
+        )
+    return chunks
+
+
+def build_seed_batch_payload(
+    chunk: SyntheticSeedChunk,
+    *,
+    test_batch_id: str,
+) -> dict[str, Any]:
+    if not chunk.records:
+        raise ValueError("No se puede construir un payload batch sin registros.")
+
+    return {
+        "test_batch_id": test_batch_id,
+        "chunk_index": chunk.chunk_index,
+        "total_chunks": chunk.total_chunks,
+        "records_count": chunk.records_count,
+        "records": [
+            {
+                "scenario_id": record.scenario_id,
+                "participant_id": record.participant_id,
+                "public_alias": record.public_alias,
+                "exercise": record.exercise,
+                "profile": record.profile,
+                "progress_payload": record.progress_payload,
+                "feedback_payload": record.feedback_payload,
+                "traceability_payload": record.traceability_payload,
+            }
+            for record in chunk.records
+        ],
+    }
+
+
 def _build_synthetic_profile(profile: dict[str, Any]) -> dict[str, Any]:
     output = {key: _to_python_value(value) for key, value in profile.items()}
     name = str(output.get("nombre", "Participante Sintético")).strip()
@@ -315,6 +409,92 @@ def _build_synthetic_profile(profile: dict[str, Any]) -> dict[str, Any]:
     output["nombre"] = name if name.upper().startswith("SINTÉTICO") else f"SINTÉTICO {name}"
     output["colegio"] = school if "sintétic" in school.lower() else f"{school} (sintético)"
     return output
+
+
+def _clone_scenario_variant(
+    scenario: SyntheticScenarioSpec,
+    *,
+    variant_number: int,
+    base_index: int,
+) -> SyntheticScenarioSpec:
+    variant_suffix = f"v{variant_number:02d}-b{base_index:02d}"
+    profile = dict(scenario.profile)
+    if profile.get("nombre"):
+        profile["nombre"] = f"{profile['nombre']} {variant_suffix}"
+    if profile.get("colegio"):
+        profile["colegio"] = f"{profile['colegio']} {variant_suffix}"
+
+    return SyntheticScenarioSpec(
+        scenario_id=f"{scenario.scenario_id}-{variant_suffix}",
+        exercise=scenario.exercise,
+        dataset_row_index=scenario.dataset_row_index,
+        profile=profile,
+        dataset_comment=f"{scenario.dataset_comment} Variante {variant_suffix}.",
+        analytics_comment=f"{scenario.analytics_comment} Variante {variant_suffix}.",
+        prediction_reflection=f"{scenario.prediction_reflection} Variante {variant_suffix}.",
+        feedback=SyntheticFeedbackSpec(
+            rating=scenario.feedback.rating,
+            summary=f"{scenario.feedback.summary} Variante {variant_suffix}.",
+            missing_topics=f"{scenario.feedback.missing_topics} Variante {variant_suffix}.",
+            improvement_ideas=f"{scenario.feedback.improvement_ideas} Variante {variant_suffix}.",
+        ),
+    )
+
+
+def _expand_indexed_scenarios_to_count(
+    indexed_scenarios: list[tuple[int, SyntheticScenarioSpec]],
+    *,
+    target_count: int,
+) -> list[SyntheticScenarioSpec]:
+    expanded: list[SyntheticScenarioSpec] = []
+    repetitions = math.ceil(target_count / len(indexed_scenarios))
+    for repetition in range(repetitions):
+        for base_index, scenario in indexed_scenarios:
+            if len(expanded) >= target_count:
+                return expanded
+            expanded.append(
+                _clone_scenario_variant(
+                    scenario,
+                    variant_number=repetition + 1,
+                    base_index=base_index,
+                )
+            )
+    return expanded
+
+
+def _group_indexed_scenarios_by_exercise(
+    indexed_scenarios: list[tuple[int, SyntheticScenarioSpec]],
+) -> dict[str, list[tuple[int, SyntheticScenarioSpec]]]:
+    grouped: dict[str, list[tuple[int, SyntheticScenarioSpec]]] = {}
+    for base_index, scenario in indexed_scenarios:
+        grouped.setdefault(scenario.exercise, []).append((base_index, scenario))
+    return grouped
+
+
+def _build_balanced_target_counts(
+    *,
+    minimum_records: int,
+    exercises: tuple[str, str],
+) -> dict[str, int]:
+    base_count, remainder = divmod(minimum_records, len(exercises))
+    return {
+        exercise: base_count + (1 if index < remainder else 0)
+        for index, exercise in enumerate(exercises)
+    }
+
+
+def _interleave_expanded_scenarios(
+    first_group: list[SyntheticScenarioSpec],
+    second_group: list[SyntheticScenarioSpec],
+) -> list[SyntheticScenarioSpec]:
+    interleaved: list[SyntheticScenarioSpec] = []
+    max_len = max(len(first_group), len(second_group))
+    for index in range(max_len):
+        if index < len(first_group):
+            interleaved.append(first_group[index])
+        if index < len(second_group):
+            interleaved.append(second_group[index])
+    return interleaved
 
 
 def _tag_text(text: str, test_batch_id: str) -> str:

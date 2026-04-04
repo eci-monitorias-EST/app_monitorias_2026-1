@@ -20,3 +20,5 @@ Scripts utilitarios y exploratorios fuera del runtime principal.
 
 - `detectar-procesos-repetitivos`: cuando un script repetido o un procedimiento offline ya amerite una skill o migración al runtime.
 - `detectar-falsos-positivos`: cuando un benchmark, clustering o visualización pueda inducir conclusiones engañosas.
+- `imputacion-sintetica-sheet-3d`: cuando haya que sembrar datos sintéticos en Google Sheets, generar HTML 3D con MiniLM+UMAP y borrar lotes de prueba por `test_batch_id`.
+- `administrar-sheet-remoto`: cuando haya que exportar snapshots, corregir filas legacy, poblar caches o reconstruir proyecciones del Sheet desde CLI.

@@ -5,25 +5,28 @@ import argparse
 import json
 import logging
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import requests
-
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 APP_DIR = ROOT_DIR / "app"
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from app_scripts_utils.webapp_client import WebappSyncClient
 from config.settings import get_form_token, get_script_url
 from services.modeling import DatasetCatalog, ModelRegistry, PredictionService
 from services.synthetic_imputation import (
     DatasetCatalogFeatureResolver,
     SyntheticBatchBuilder,
     build_delete_batch_payload,
+    build_seed_batch_payload,
     build_projection_comments,
+    chunk_synthetic_batch,
     export_projection_html,
     load_synthetic_scenarios,
 )
@@ -32,30 +35,10 @@ from services.text_pipeline import CommentAnalyticsService
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_DATASET_PATH = ROOT_DIR / "app_scripts_utils" / "synthetic_sheet_imputation_dataset.json"
-
-
-class WebappSyncClient:
-    def __init__(self, *, url: str, token: str, timeout: int) -> None:
-        self.url = url.strip()
-        self.token = token.strip()
-        self.timeout = timeout
-
-    def post(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
-        if not self.url:
-            raise ValueError("Falta GOOGLE_SCRIPT_URL o --webapp-url.")
-        if not self.token:
-            raise ValueError("Falta GOOGLE_SCRIPT_TOKEN o --token.")
-
-        response = requests.post(
-            self.url,
-            json={"token": self.token, "accion": action, **payload},
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        data = response.json()
-        if data.get("status") != "success":
-            raise RuntimeError(f"El webapp devolvió error para {action}: {data.get('message', 'sin detalle')}")
-        return data
+SEED_VERIFY_MAX_ATTEMPTS = 3
+SEED_VERIFY_INITIAL_BACKOFF_SECONDS = 0.5
+DELETE_VERIFY_MAX_ATTEMPTS = 4
+DELETE_VERIFY_INITIAL_BACKOFF_SECONDS = 1.0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,11 +57,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_DATASET_PATH,
         help="Archivo JSON versionable con escenarios sintéticos.",
     )
+    parser.add_argument(
+        "--minimum-records",
+        type=int,
+        default=100,
+        help="Cantidad mínima de registros sintéticos a generar a partir de los escenarios base.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     seed_parser = subparsers.add_parser("seed", help="Carga datos sintéticos al Google Sheet vía webapp.")
     seed_parser.add_argument("--test-batch-id", default=build_default_batch_id())
+    seed_parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=25,
+        help="Cantidad de registros por request batch hacia Apps Script.",
+    )
 
     render_parser = subparsers.add_parser(
         "render",
@@ -99,12 +94,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     delete_parser.add_argument("--test-batch-id", required=True)
     delete_parser.add_argument("--execute", action="store_true", help="Ejecuta el borrado real del lote.")
+    delete_parser.add_argument(
+        "--verify-attempts",
+        type=int,
+        default=DELETE_VERIFY_MAX_ATTEMPTS,
+        help="Cantidad de chequeos post-delete cuando se usa --execute.",
+    )
+    delete_parser.add_argument(
+        "--verify-backoff-seconds",
+        type=float,
+        default=DELETE_VERIFY_INITIAL_BACKOFF_SECONDS,
+        help="Backoff inicial entre chequeos post-delete.",
+    )
 
     dry_run_parser = subparsers.add_parser(
         "delete-dry-run",
         help="Alias explícito para simular borrado en cascada de un lote sintético.",
     )
     dry_run_parser.add_argument("--test-batch-id", required=True)
+    dry_run_parser.add_argument(
+        "--verify-attempts",
+        type=int,
+        default=DELETE_VERIFY_MAX_ATTEMPTS,
+        help="Se ignora en dry-run; se conserva para compatibilidad de CLI.",
+    )
+    dry_run_parser.add_argument(
+        "--verify-backoff-seconds",
+        type=float,
+        default=DELETE_VERIFY_INITIAL_BACKOFF_SECONDS,
+        help="Se ignora en dry-run; se conserva para compatibilidad de CLI.",
+    )
 
     return parser
 
@@ -125,7 +144,7 @@ def create_client(args: argparse.Namespace) -> WebappSyncClient:
 
 
 def run_seed(args: argparse.Namespace) -> None:
-    scenarios = load_synthetic_scenarios(args.dataset_file)
+    scenarios = load_synthetic_scenarios(args.dataset_file, minimum_records=args.minimum_records)
     catalog = DatasetCatalog()
     predictor = PredictionService(ModelRegistry(catalog))
     builder = SyntheticBatchBuilder(
@@ -134,43 +153,22 @@ def run_seed(args: argparse.Namespace) -> None:
     )
     batch = builder.build_batch(scenarios, test_batch_id=args.test_batch_id)
     client = create_client(args)
+    chunks = chunk_synthetic_batch(batch, chunk_size=args.chunk_size)
 
-    for record in batch.records:
-        client.post(
-            "upsert_sesion",
-            {
-                "participant_id": record.participant_id,
-                "public_alias": record.public_alias,
-                "profile": record.profile,
-                **record.traceability_payload,
+    for chunk in chunks:
+        payload = build_seed_batch_payload(chunk, test_batch_id=batch.test_batch_id)
+        client.post("seed_test_batch", payload)
+        LOGGER.info(
+            "Chunk batch enviado al webapp.",
+            extra={
+                "test_batch_id": batch.test_batch_id,
+                "chunk_index": chunk.chunk_index,
+                "total_chunks": chunk.total_chunks,
+                "records_count": chunk.records_count,
             },
         )
-        client.post(
-            "upsert_respuesta",
-            {
-                "participant_id": record.participant_id,
-                "exercise": record.exercise,
-                "payload": record.progress_payload,
-                **record.traceability_payload,
-            },
-        )
-        client.post(
-            "upsert_feedback",
-            {
-                "participant_id": record.participant_id,
-                "exercise": record.exercise,
-                "payload": record.feedback_payload,
-                **record.traceability_payload,
-            },
-        )
-        client.post(
-            "marcar_completado",
-            {
-                "participant_id": record.participant_id,
-                "exercise": record.exercise,
-                **record.traceability_payload,
-            },
-        )
+
+    verify_seed_batch_visibility(client, batch)
 
     LOGGER.info(
         "Seed completado.",
@@ -182,6 +180,78 @@ def run_seed(args: argparse.Namespace) -> None:
     )
     LOGGER.info("Lote sintético cargado: %s", batch.test_batch_id)
     LOGGER.info("Registros enviados: %s", batch.total_records)
+    LOGGER.info("Chunks enviados: %s", len(chunks))
+
+
+def verify_seed_batch_visibility(
+    client: WebappSyncClient,
+    batch: Any,
+    *,
+    max_attempts: int = SEED_VERIFY_MAX_ATTEMPTS,
+    initial_backoff_seconds: float = SEED_VERIFY_INITIAL_BACKOFF_SECONDS,
+) -> None:
+    if max_attempts <= 0:
+        raise ValueError("max_attempts debe ser mayor que cero.")
+    if initial_backoff_seconds <= 0:
+        raise ValueError("initial_backoff_seconds debe ser mayor que cero.")
+
+    expected_by_exercise = _count_records_by_exercise(batch.records)
+    last_observed_state = "sin observaciones"
+
+    for attempt in range(1, max_attempts + 1):
+        verification_errors: list[str] = []
+        for exercise, expected_records in sorted(expected_by_exercise.items()):
+            payload = client.post(
+                "get_test_batch",
+                {"test_batch_id": batch.test_batch_id, "exercise": exercise},
+            )
+            observed_sessions = len(payload.get("sesiones", []))
+            observed_responses = len(payload.get("respuestas", []))
+            last_observed_state = (
+                f"exercise={exercise} sesiones={observed_sessions}/{batch.total_records} "
+                f"respuestas={observed_responses}/{expected_records}"
+            )
+            if observed_sessions < batch.total_records or observed_responses < expected_records:
+                verification_errors.append(last_observed_state)
+
+        if not verification_errors:
+            LOGGER.info(
+                "Verificación post-seed confirmada.",
+                extra={
+                    "test_batch_id": batch.test_batch_id,
+                    "attempt": attempt,
+                    "exercises": tuple(sorted(expected_by_exercise)),
+                },
+            )
+            return
+
+        if attempt == max_attempts:
+            break
+
+        backoff_seconds = initial_backoff_seconds * (2 ** (attempt - 1))
+        LOGGER.warning(
+            "Lote aún no visible tras seed; reintentando verificación.",
+            extra={
+                "test_batch_id": batch.test_batch_id,
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "backoff_seconds": backoff_seconds,
+                "details": verification_errors,
+            },
+        )
+        time.sleep(backoff_seconds)
+
+    raise RuntimeError(
+        "El lote sintético no quedó visible tras el seed. "
+        f"batch={batch.test_batch_id} último_estado={last_observed_state}"
+    )
+
+
+def _count_records_by_exercise(records: list[Any]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record.exercise] = counts.get(record.exercise, 0) + 1
+    return counts
 
 
 def run_render(args: argparse.Namespace) -> None:
@@ -224,6 +294,74 @@ def run_delete(args: argparse.Namespace, *, dry_run_override: bool | None = None
     LOGGER.info(
         "Resultado delete_test_batch: %s",
         json.dumps(response, ensure_ascii=False, indent=2),
+    )
+    if not dry_run:
+        verify_delete_batch_visibility(
+            client,
+            args.test_batch_id,
+            max_attempts=getattr(args, "verify_attempts", DELETE_VERIFY_MAX_ATTEMPTS),
+            initial_backoff_seconds=getattr(
+                args,
+                "verify_backoff_seconds",
+                DELETE_VERIFY_INITIAL_BACKOFF_SECONDS,
+            ),
+        )
+
+
+def verify_delete_batch_visibility(
+    client: WebappSyncClient,
+    test_batch_id: str,
+    *,
+    max_attempts: int = DELETE_VERIFY_MAX_ATTEMPTS,
+    initial_backoff_seconds: float = DELETE_VERIFY_INITIAL_BACKOFF_SECONDS,
+) -> None:
+    if max_attempts <= 0:
+        raise ValueError("max_attempts debe ser mayor que cero.")
+    if initial_backoff_seconds <= 0:
+        raise ValueError("initial_backoff_seconds debe ser mayor que cero.")
+
+    last_observed_state = "sin observaciones"
+    for attempt in range(1, max_attempts + 1):
+        payload = client.post("get_test_batch", {"test_batch_id": test_batch_id, "exercise": ""})
+        remaining_by_sheet = {
+            "sesiones": len(payload.get("sesiones", [])),
+            "respuestas": len(payload.get("respuestas", [])),
+            "historial_comentarios": len(payload.get("historial_comentarios", [])),
+            "feedback": len(payload.get("feedback", [])),
+            "control": len(payload.get("control", [])),
+        }
+        remaining_total = sum(remaining_by_sheet.values())
+        last_observed_state = json.dumps(remaining_by_sheet, ensure_ascii=False, sort_keys=True)
+
+        if remaining_total == 0:
+            LOGGER.info(
+                "Verificación post-delete confirmada.",
+                extra={
+                    "test_batch_id": test_batch_id,
+                    "attempt": attempt,
+                },
+            )
+            return
+
+        if attempt == max_attempts:
+            break
+
+        backoff_seconds = initial_backoff_seconds * (2 ** (attempt - 1))
+        LOGGER.warning(
+            "Persisten filas sintéticas tras delete; reintentando verificación.",
+            extra={
+                "test_batch_id": test_batch_id,
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "backoff_seconds": backoff_seconds,
+                "remaining_by_sheet": remaining_by_sheet,
+            },
+        )
+        time.sleep(backoff_seconds)
+
+    raise RuntimeError(
+        "El lote sintético sigue visible tras delete_test_batch. "
+        f"batch={test_batch_id} último_estado={last_observed_state}"
     )
 
 
