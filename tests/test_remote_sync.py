@@ -86,6 +86,11 @@ def test_build_remote_sync_client_returns_noop_when_sync_disabled(
             {"participant_id": "p-001", "exercise": "credit_approval", "payload": {"rating": 5}},
         ),
         (
+            "sync_comment_events",
+            "upsert_comment_events",
+            {"participant_id": "p-001", "exercise": "credit_approval", "rows": [{"comment_hash": "h1"}]},
+        ),
+        (
             "sync_completion",
             "marcar_completado",
             {"participant_id": "p-001", "exercise": "credit_approval"},
@@ -133,10 +138,10 @@ def test_apps_script_client_posts_expected_action_and_payload(
     ("method_name", "expected_action", "payload", "expected_rows"),
     [
         (
-            "query_projection_comments",
-            "query_projection_comments",
+            "query_comment_events",
+            "query_comment_events",
             {"exercise": "credit_approval", "limit_rows": 200},
-            [{"participant_id": "p-001"}],
+            [{"participant_id": "p-001", "comment_hash": "hash-1"}],
         ),
         (
             "query_embeddings_cache",
@@ -144,7 +149,6 @@ def test_apps_script_client_posts_expected_action_and_payload(
             {
                 "exercise": "credit_approval",
                 "embedding_version": "emb-v1",
-                "participant_ids": ["p-001"],
                 "comment_hashes": ["hash-1"],
             },
             [{"participant_id": "p-001", "comment_hash": "hash-1"}],
@@ -155,7 +159,6 @@ def test_apps_script_client_posts_expected_action_and_payload(
             {
                 "exercise": "credit_approval",
                 "projection_version": "proj-v1",
-                "participant_ids": ["p-001"],
                 "comment_hashes": ["hash-1"],
             },
             [{"participant_id": "p-001", "comment_hash": "hash-1"}],

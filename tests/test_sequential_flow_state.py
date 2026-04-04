@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 from domain.models import ExerciseOption, ParticipantRecord
-from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
+from services.sequential_flow_state import (
+    FlowContext,
+    build_sequential_flow_state_machine,
+    derive_max_unlocked_step,
+)
 from services.submission_validation import SubmissionValidationService
 
 
@@ -31,17 +35,51 @@ def test_step_three_requires_selected_exercise() -> None:
     assert machine.next_step_id(3, _build_context(_build_record())) == 4
 
 
-@pytest.mark.parametrize("step_id", [4, 5])
-def test_intermediate_steps_only_require_a_selected_exercise(step_id: int) -> None:
+def test_dataset_step_requires_meaningful_dataset_comment() -> None:
     machine = build_sequential_flow_state_machine()
 
-    assert machine.next_step_id(step_id, _build_context(_build_record())) == step_id + 1
+    assert machine.next_step_id(4, _build_context(_build_record())) is None
+    assert machine.next_step_id(
+        4,
+        _build_context(
+            _build_record(dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos."),
+        ),
+    ) == 5
 
 
-def test_prediction_step_requires_prediction_output_for_current_exercise() -> None:
+def test_dashboard_step_requires_meaningful_analytics_comment() -> None:
     machine = build_sequential_flow_state_machine()
-    blocked_record = _build_record()
-    allowed_record = _build_record(prediction_output={"label": "Aprobado", "probability": 0.82})
+
+    assert machine.next_step_id(
+        5,
+        _build_context(
+            _build_record(dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos."),
+        ),
+    ) is None
+    assert machine.next_step_id(
+        5,
+        _build_context(
+            _build_record(
+                dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
+                analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
+            )
+        ),
+    ) == 6
+
+
+def test_prediction_step_requires_output_and_meaningful_reflection_for_current_exercise() -> None:
+    machine = build_sequential_flow_state_machine()
+    blocked_record = _build_record(
+        dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
+        analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
+        prediction_output={"label": "Aprobado", "probability": 0.82},
+    )
+    allowed_record = _build_record(
+        dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
+        analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
+        prediction_reflection="La explicación confirma que ingresos estables pesan más que el monto solicitado.",
+        prediction_output={"label": "Aprobado", "probability": 0.82},
+    )
 
     assert machine.next_step_id(6, _build_context(blocked_record)) is None
     assert machine.next_step_id(6, _build_context(allowed_record)) == 7
@@ -56,6 +94,20 @@ def test_prediction_guard_only_considers_current_exercise_output() -> None:
     }
 
     assert machine.next_step_id(6, _build_context(record)) is None
+
+
+def test_derive_max_unlocked_step_resets_new_exercise_but_restores_previous_progress() -> None:
+    empty_record = _build_record(selected_exercise=ExerciseOption.DEFAULT_RISK)
+    progressed_record = _build_record(
+        selected_exercise=ExerciseOption.CREDIT_APPROVAL,
+        dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
+        analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
+        prediction_reflection="La explicación confirma que ingresos estables pesan más que el monto solicitado.",
+        prediction_output={"label": "Aprobado", "probability": 0.82},
+    )
+
+    assert derive_max_unlocked_step(empty_record, SubmissionValidationService().has_meaningful_learning_text) == 4
+    assert derive_max_unlocked_step(progressed_record, SubmissionValidationService().has_meaningful_learning_text) == 7
 
 
 def test_invalid_step_id_raises_clear_error() -> None:

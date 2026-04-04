@@ -93,10 +93,14 @@ def test_list_completed_comments_includes_predicted_meaningful_comments_without_
 
     comments = store.list_completed_comments("credit_approval", participant.participant_id)
 
-    assert len(comments) == 1
-    assert comments[0].participant_id == participant.participant_id
-    assert comments[0].current_user is True
-    assert "Detecté ingresos altos" in comments[0].combined_comment
+    assert len(comments) == 3
+    assert {comment.comment_type for comment in comments} == {
+        "dataset_comment",
+        "analytics_comment",
+        "prediction_reflection",
+    }
+    assert all(comment.participant_id == participant.participant_id for comment in comments)
+    assert all(comment.current_user is True for comment in comments)
 
 
 def test_list_completed_comments_excludes_records_without_prediction_output(tmp_path: Path) -> None:
@@ -154,3 +158,28 @@ def test_list_completed_comments_only_uses_requested_exercise_progress(tmp_path:
     comments = store.list_completed_comments("credit_approval", participant.participant_id)
 
     assert comments == []
+
+
+def test_list_completed_comments_caps_cardinality_to_three_comment_types_per_exercise(tmp_path: Path) -> None:
+    store = JsonStateStore(path=tmp_path / "state.json")
+    participant = store.upsert_participant("user-cardinality", {"name": "Eva"})
+    store.select_exercise(participant.participant_id, "credit_approval")
+    store.upsert_exercise_progress(
+        participant.participant_id,
+        "credit_approval",
+        {
+            "dataset_comment": "Comentario de dataset con suficiente detalle para el ejercicio.",
+            "analytics_comment": "Comentario analítico con suficiente detalle para el ejercicio.",
+            "prediction_reflection": "Reflexión de predicción con suficiente detalle para el ejercicio.",
+            "prediction_output": {"label": "Aprobado", "probability": 0.73},
+        },
+    )
+
+    comments = store.list_completed_comments("credit_approval", participant.participant_id)
+
+    assert len(comments) == 3
+    assert {comment.comment_type for comment in comments} == {
+        "dataset_comment",
+        "analytics_comment",
+        "prediction_reflection",
+    }

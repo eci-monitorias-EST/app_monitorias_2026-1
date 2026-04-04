@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import re
-import unicodedata
 from typing import Any
 
 import numpy as np
@@ -12,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from domain.models import CompletedComment
+from services.comment_events import COMMENT_TYPE_LABELS, CommentTextCleaner as TextCleaner, build_comment_hash
 from services.configuration import load_app_config
 from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingProvider
 from services.remote_sync import RemoteSyncClient
@@ -22,30 +20,8 @@ from services.submission_validation import SubmissionValidationService
 LOGGER = logging.getLogger(__name__)
 
 
-SPANISH_STOPWORDS = {
-    "de", "la", "el", "los", "las", "que", "y", "o", "en", "un", "una", "para", "por",
-    "con", "del", "al", "se", "su", "sus", "me", "mi", "mis", "es", "son", "muy", "mas",
-    "pero", "porque", "como", "lo", "le", "les", "ha", "han", "fue", "ser", "estar",
-}
-
-class TextCleaner:
-    def clean(self, text: str) -> str:
-        normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-        normalized = normalized.lower()
-        normalized = re.sub(r"https?://\S+|www\.\S+", " ", normalized)
-        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
-        normalized = re.sub(r"\s+", " ", normalized).strip()
-        tokens = [token for token in normalized.split() if token not in SPANISH_STOPWORDS]
-        return " ".join(tokens)
-
-
 def combine_comment_fragments(*fragments: str) -> str:
     return " ".join(str(fragment).strip() for fragment in fragments if str(fragment).strip()).strip()
-
-
-def build_comment_hash(comment: str, *, cleaner: TextCleaner | None = None, is_clean: bool = False) -> str:
-    normalized = comment.strip() if is_clean else (cleaner or TextCleaner()).clean(comment)
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 class DimensionalityReducer:
     def reduce(self, matrix: np.ndarray) -> tuple[np.ndarray, str]:
@@ -122,7 +98,7 @@ class CommentAnalyticsService:
 
     def list_comments(self, exercise: str, current_participant_id: str) -> list[CompletedComment]:
         if self.remote_sync is not None:
-            remote_rows = self.remote_sync.query_projection_comments(exercise, self.source_snapshot_limit)
+            remote_rows = self.remote_sync.query_comment_events(exercise, self.source_snapshot_limit)
             if remote_rows is not None:
                 return self._build_comments_from_remote_rows(remote_rows, current_participant_id)
 
@@ -160,6 +136,8 @@ class CommentAnalyticsService:
                     "y": float(coordinates[index, 1]),
                     "z": float(coordinates[index, 2]),
                     "current_user": comment.current_user,
+                    "comment_type": comment.comment_type,
+                    "comment_type_label": comment.comment_type_label,
                 }
             )
         return {
@@ -177,24 +155,25 @@ class CommentAnalyticsService:
     ) -> list[CompletedComment]:
         comments: list[CompletedComment] = []
         for row in rows:
-            combined_comment = str(row.get("combined_comment", "")).strip() or combine_comment_fragments(
-                str(row.get("dataset_comment", "")),
-                str(row.get("analytics_comment", "")),
-                str(row.get("prediction_reflection", "")),
-            )
-            if not combined_comment:
+            comment_text = str(row.get("comment_text", row.get("combined_comment", ""))).strip()
+            if not comment_text:
                 continue
-            if not self.validator.has_meaningful_learning_text(combined_comment):
+            if not self.validator.has_meaningful_learning_text(comment_text):
                 continue
+            comment_type = str(row.get("comment_type", "")).strip()
             comments.append(
                 CompletedComment(
                     participant_id=str(row.get("participant_id", "")).strip(),
                     public_alias=str(row.get("public_alias", "")).strip(),
                     exercise=str(row.get("exercise", "")).strip(),
-                    combined_comment=combined_comment,
+                    combined_comment=comment_text,
                     current_user=str(row.get("participant_id", "")).strip() == current_participant_id,
+                    clean_comment=str(row.get("clean_comment", "")).strip(),
+                    comment_hash=str(row.get("comment_hash", "")).strip(),
                     source_updated_at=str(row.get("updated_at", "")).strip(),
                     source_sheet_row_number=int(row.get("source_sheet_row_number", 0) or 0),
+                    comment_type=comment_type,
+                    comment_type_label=COMMENT_TYPE_LABELS.get(comment_type, comment_type),
                 )
             )
         return comments
@@ -211,6 +190,8 @@ class CommentAnalyticsService:
             comment_hash=comment.comment_hash or build_comment_hash(clean_comment, is_clean=True),
             source_updated_at=comment.source_updated_at,
             source_sheet_row_number=comment.source_sheet_row_number,
+            comment_type=comment.comment_type,
+            comment_type_label=comment.comment_type_label or COMMENT_TYPE_LABELS.get(comment.comment_type, comment.comment_type),
         )
 
     def _resolve_embeddings(
@@ -218,12 +199,12 @@ class CommentAnalyticsService:
         comments: list[CompletedComment],
     ) -> tuple[np.ndarray, str]:
         cached_rows_by_key = self._query_embedding_cache_rows(comments)
-        vectors_by_key: dict[tuple[str, str, str], np.ndarray] = {}
+        vectors_by_key: dict[str, np.ndarray] = {}
         embedding_provider = ""
         missing_comments: list[CompletedComment] = []
 
         for comment in comments:
-            key = (comment.participant_id, comment.exercise, comment.comment_hash)
+            key = comment.comment_hash
             cached_row = cached_rows_by_key.get(key)
             if cached_row is None:
                 missing_comments.append(comment)
@@ -236,7 +217,7 @@ class CommentAnalyticsService:
             embedding_provider = embedding_provider or result.provider
             upsert_rows: list[dict[str, Any]] = []
             for index, comment in enumerate(missing_comments):
-                key = (comment.participant_id, comment.exercise, comment.comment_hash)
+                key = comment.comment_hash
                 vector = np.asarray(result.matrix[index], dtype=float)
                 vectors_by_key[key] = vector
                 upsert_rows.append(
@@ -248,6 +229,7 @@ class CommentAnalyticsService:
                         "embedding_provider": result.provider,
                         "comment_text": comment.combined_comment,
                         "clean_comment": comment.clean_comment,
+                        "comment_type": comment.comment_type,
                         "embedding_vector": vector.tolist(),
                         "source_updated_at": comment.source_updated_at,
                         "source_sheet_row_number": comment.source_sheet_row_number,
@@ -257,7 +239,7 @@ class CommentAnalyticsService:
                 self.remote_sync.upsert_embeddings_cache(upsert_rows)
 
         matrix = np.vstack(
-            [vectors_by_key[(comment.participant_id, comment.exercise, comment.comment_hash)] for comment in comments]
+            [vectors_by_key[comment.comment_hash] for comment in comments]
         )
         return matrix, embedding_provider or "unknown"
 
@@ -273,7 +255,7 @@ class CommentAnalyticsService:
         all_cached = True
 
         for comment in comments:
-            key = (comment.participant_id, comment.exercise, comment.comment_hash)
+            key = comment.comment_hash
             cached_row = cached_rows_by_key.get(key)
             if cached_row is None:
                 all_cached = False
@@ -309,6 +291,7 @@ class CommentAnalyticsService:
                         "public_alias": comment.public_alias,
                         "comment_text": comment.combined_comment,
                         "clean_comment": comment.clean_comment,
+                        "comment_type": comment.comment_type,
                         "x": float(coordinates[index, 0]),
                         "y": float(coordinates[index, 1]),
                         "z": float(coordinates[index, 2]),
@@ -323,46 +306,36 @@ class CommentAnalyticsService:
     def _query_embedding_cache_rows(
         self,
         comments: list[CompletedComment],
-    ) -> dict[tuple[str, str, str], dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         if self.remote_sync is None:
             return {}
         rows = self.remote_sync.query_embeddings_cache(
             exercise=comments[0].exercise,
             embedding_version=self.embedding_version,
-            participant_ids=[comment.participant_id for comment in comments],
             comment_hashes=[comment.comment_hash for comment in comments],
         )
         if rows is None:
             return {}
         return {
-            (
-                str(row.get("participant_id", "")).strip(),
-                str(row.get("exercise", "")).strip(),
-                str(row.get("comment_hash", "")).strip(),
-            ): row
+            str(row.get("comment_hash", "")).strip(): row
             for row in rows
         }
 
     def _query_projection_cache_rows(
         self,
         comments: list[CompletedComment],
-    ) -> dict[tuple[str, str, str], dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         if self.remote_sync is None:
             return {}
         rows = self.remote_sync.query_projection_cache(
             exercise=comments[0].exercise,
             projection_version=self.projection_version,
-            participant_ids=[comment.participant_id for comment in comments],
             comment_hashes=[comment.comment_hash for comment in comments],
         )
         if rows is None:
             return {}
         return {
-            (
-                str(row.get("participant_id", "")).strip(),
-                str(row.get("exercise", "")).strip(),
-                str(row.get("comment_hash", "")).strip(),
-            ): row
+            str(row.get("comment_hash", "")).strip(): row
             for row in rows
         }
 

@@ -284,7 +284,6 @@ def test_webapp_client_posts_query_embeddings_cache_payload(monkeypatch: pytest.
     response = client.query_embeddings_cache(
         exercise="credit_approval",
         embedding_version="emb-v1",
-        participant_ids=["p-001"],
         comment_hashes=["hash-1"],
     )
 
@@ -296,7 +295,6 @@ def test_webapp_client_posts_query_embeddings_cache_payload(monkeypatch: pytest.
             "accion": "query_embeddings_cache",
             "exercise": "credit_approval",
             "embedding_version": "emb-v1",
-            "participant_ids": ["p-001"],
             "comment_hashes": ["hash-1"],
         },
         "timeout": 15,

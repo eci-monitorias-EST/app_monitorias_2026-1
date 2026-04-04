@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from domain.models import CompletedComment, ExerciseProgress, FeedbackRecord, ParticipantRecord
+from services.comment_events import COMMENT_TYPE_LABELS, build_comment_event_records
 from services.configuration import load_app_config
 from services.submission_validation import SubmissionValidationService
 
@@ -127,31 +128,27 @@ class JsonStateStore:
             progress = record.exercise_progress.get(exercise)
             if progress is None or not progress.prediction_output:
                 continue
-            combined = self._build_projection_comment(progress)
-            if combined is None:
-                continue
-            comments.append(
+            events = build_comment_event_records(
+                participant_id=record.participant_id,
+                public_alias=record.public_alias,
+                exercise=exercise,
+                progress=progress,
+                validator=self._submission_validation,
+            )
+            comments.extend(
                 CompletedComment(
-                    participant_id=record.participant_id,
-                    public_alias=record.public_alias,
-                    exercise=exercise,
-                    combined_comment=combined,
+                    participant_id=event.participant_id,
+                    public_alias=event.public_alias,
+                    exercise=event.exercise,
+                    combined_comment=event.comment_text,
                     current_user=record.participant_id == current_participant_id,
-                    source_updated_at=progress.updated_at,
+                    clean_comment=event.clean_comment,
+                    comment_hash=event.comment_hash,
+                    source_updated_at=event.updated_at,
+                    source_sheet_row_number=event.source_sheet_row_number,
+                    comment_type=event.comment_type,
+                    comment_type_label=COMMENT_TYPE_LABELS.get(event.comment_type, event.comment_type),
                 )
+                for event in events
             )
         return comments
-
-    def _build_projection_comment(self, progress: ExerciseProgress) -> str | None:
-        combined = " ".join(
-            [
-                progress.dataset_comment.strip(),
-                progress.analytics_comment.strip(),
-                progress.prediction_reflection.strip(),
-            ]
-        ).strip()
-        if not combined:
-            return None
-        if not self._submission_validation.has_meaningful_learning_text(combined):
-            return None
-        return combined

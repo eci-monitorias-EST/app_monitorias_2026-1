@@ -29,6 +29,12 @@ class FlowContext:
 
 
 @dataclass(frozen=True)
+class ExerciseFlowState:
+    current_step: int
+    max_unlocked_step: int
+
+
+@dataclass(frozen=True)
 class FlowStep:
     id: int
     title: str
@@ -85,24 +91,48 @@ def build_sequential_flow_state_machine() -> SequentialFlowStateMachine:
                 4,
                 "Conozcamos a nuestros clientes",
                 "_render_dataset_view",
-                _require_selected_exercise,
+                _require_dataset_comment,
             ),
             FlowStep(
                 5,
                 "Exploración y dashboard",
                 "_render_dashboard",
-                _require_selected_exercise,
+                _require_analytics_comment,
             ),
             FlowStep(
                 6,
                 "Predicción explicable",
                 "_render_prediction",
-                _require_prediction_output,
+                _require_prediction_reflection,
             ),
             FlowStep(7, "Comentarios 3D", "_render_comments_projection", _require_record),
             FlowStep(8, "Retroalimentación final", "_render_final_feedback", _deny_advance),
         )
     )
+
+
+def derive_exercise_flow_state(record: ParticipantRecord | None, has_meaningful_text: MeaningfulTextChecker) -> ExerciseFlowState:
+    max_unlocked_step = derive_max_unlocked_step(record, has_meaningful_text)
+    current_step = min(max_unlocked_step, 4 if max_unlocked_step >= 4 else max_unlocked_step)
+    return ExerciseFlowState(current_step=current_step, max_unlocked_step=max_unlocked_step)
+
+
+def derive_max_unlocked_step(record: ParticipantRecord | None, has_meaningful_text: MeaningfulTextChecker) -> int:
+    if record is None:
+        return 2
+    if not record.selected_exercise:
+        return 3
+
+    progress = record.exercise_progress.get(record.selected_exercise)
+    if progress is None:
+        return 4
+    if not has_meaningful_text(progress.dataset_comment):
+        return 4
+    if not has_meaningful_text(progress.analytics_comment):
+        return 5
+    if not progress.prediction_output or not has_meaningful_text(progress.prediction_reflection):
+        return 6
+    return 8 if progress.feedback is not None else 7
 
 
 def _allow_anything(_: FlowContext) -> bool:
@@ -121,8 +151,22 @@ def _require_selected_exercise(context: FlowContext) -> bool:
     return bool(context.record and context.selected_exercise)
 
 
-def _require_prediction_output(context: FlowContext) -> bool:
+def _require_dataset_comment(context: FlowContext) -> bool:
     progress = context.progress
     if progress is None:
         return False
-    return bool(progress.prediction_output)
+    return context.has_meaningful_text(progress.dataset_comment)
+
+
+def _require_analytics_comment(context: FlowContext) -> bool:
+    progress = context.progress
+    if progress is None:
+        return False
+    return context.has_meaningful_text(progress.analytics_comment)
+
+
+def _require_prediction_reflection(context: FlowContext) -> bool:
+    progress = context.progress
+    if progress is None:
+        return False
+    return bool(progress.prediction_output) and context.has_meaningful_text(progress.prediction_reflection)

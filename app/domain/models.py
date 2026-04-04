@@ -148,6 +148,30 @@ class CompletedComment:
     comment_hash: str = ""
     source_updated_at: str = ""
     source_sheet_row_number: int = 0
+    comment_type: str = ""
+    comment_type_label: str = ""
+
+
+@dataclass
+class CommentEvent:
+    participant_id: str
+    public_alias: str
+    exercise: str
+    comment_type: str
+    comment_text: str
+    clean_comment: str
+    comment_hash: str
+    updated_at: str
+    source_sheet_row_number: int = 0
+    is_test_data: bool = False
+    test_batch_id: str = ""
+    data_origin: str = "app_runtime"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def logical_key(self) -> tuple[str, str, str]:
+        return (self.participant_id, self.exercise, self.comment_type)
 
 
 @dataclass

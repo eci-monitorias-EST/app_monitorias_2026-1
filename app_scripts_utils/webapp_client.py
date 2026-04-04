@@ -141,20 +141,26 @@ class WebappSyncClient:
             {"exercise": exercise, "limit_rows": limit_rows},
         )
 
+    def query_comment_events(self, *, exercise: str, limit_rows: int = 500) -> dict[str, Any]:
+        return self.post(
+            "query_comment_events",
+            {"exercise": exercise, "limit_rows": limit_rows},
+        )
+
+    def upsert_comment_events(self, *, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return self.post("upsert_comment_events", {"rows": rows})
+
     def query_embeddings_cache(
         self,
         *,
         exercise: str,
         embedding_version: str,
-        participant_ids: list[str] | None = None,
         comment_hashes: list[str] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "exercise": exercise,
             "embedding_version": embedding_version,
         }
-        if participant_ids:
-            payload["participant_ids"] = participant_ids
         if comment_hashes:
             payload["comment_hashes"] = comment_hashes
         return self.post("query_embeddings_cache", payload)
@@ -167,15 +173,12 @@ class WebappSyncClient:
         *,
         exercise: str,
         projection_version: str,
-        participant_ids: list[str] | None = None,
         comment_hashes: list[str] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "exercise": exercise,
             "projection_version": projection_version,
         }
-        if participant_ids:
-            payload["participant_ids"] = participant_ids
         if comment_hashes:
             payload["comment_hashes"] = comment_hashes
         return self.post("query_projection_cache", payload)

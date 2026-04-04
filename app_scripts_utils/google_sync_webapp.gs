@@ -7,6 +7,7 @@ function doPost(e) {
         sesiones: "sesiones",
         respuestas: "respuestas",
         historialComentarios: "historial_comentarios",
+        commentEvents: "comment_events",
         feedback: "feedback",
         control: "control_ingreso",
         legacyArchive: "legacy_row_archive",
@@ -17,6 +18,7 @@ function doPost(e) {
         sesiones: "sesiones",
         respuestas: "respuestas",
         historial_comentarios: "historial_comentarios",
+        comment_events: "comment_events",
         feedback: "feedback",
         control_ingreso: "control_ingreso",
         embeddings_cache: "embeddings_cache",
@@ -58,8 +60,12 @@ function doPost(e) {
       return jsonResponse_(backfillEmbeddingsCache_(sheets, data));
     }
 
-    if (action === "query_projection_comments") {
-      return jsonResponse_(queryProjectionComments_(sheets, data));
+    if (action === "query_projection_comments" || action === "query_comment_events") {
+      return jsonResponse_(queryCommentEvents_(sheets, data, action));
+    }
+
+    if (action === "upsert_comment_events") {
+      return jsonResponse_(upsertCommentEvents_(sheets, data));
     }
 
     if (action === "query_embeddings_cache") {
@@ -196,6 +202,7 @@ function doPost(e) {
         sesiones: getRowsByTestBatch_(sheets.sesiones, testBatchId, ""),
         respuestas: getRowsByTestBatch_(sheets.respuestas, testBatchId, exercise),
         historial_comentarios: getRowsByTestBatch_(sheets.historialComentarios, testBatchId, exercise),
+        comment_events: getRowsByTestBatch_(sheets.commentEvents, testBatchId, exercise),
         feedback: getRowsByTestBatch_(sheets.feedback, testBatchId, exercise),
         control: getRowsByTestBatch_(sheets.control, testBatchId, exercise)
       });
@@ -466,6 +473,111 @@ function buildCommentHistoryPayload_(payload) {
     test_batch_id: payload.test_batch_id,
     data_origin: payload.data_origin,
     captured_at: isoNow_()
+  };
+}
+
+function normalizeCommentEventRows_(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error("upsert_comment_events requiere rows no vacías.");
+  }
+  return rows.map(function(row) {
+    const participantId = String(row.participant_id || "").trim();
+    const exercise = String(row.exercise || "").trim();
+    const commentType = String(row.comment_type || "").trim();
+    const commentText = String(row.comment_text || row.comment || "").trim();
+    const commentHash = String(row.comment_hash || "").trim();
+    validateRequired_(
+      {
+        participant_id: participantId,
+        exercise: exercise,
+        comment_type: commentType,
+        comment_text: commentText,
+        comment_hash: commentHash
+      },
+      ["participant_id", "exercise", "comment_type", "comment_text", "comment_hash"]
+    );
+    return {
+      participant_id: participantId,
+      public_alias: String(row.public_alias || participantId).trim(),
+      exercise: exercise,
+      comment_type: commentType,
+      comment_text: commentText,
+      clean_comment: String(row.clean_comment || "").trim(),
+      comment_hash: commentHash,
+      updated_at: String(row.updated_at || isoNow_()).trim(),
+      source_sheet_row_number: Number(row.source_sheet_row_number || 0),
+      is_test_data: normalizeBoolean_(row.is_test_data, false),
+      test_batch_id: String(row.test_batch_id || "").trim(),
+      data_origin: String(row.data_origin || "app_runtime").trim()
+    };
+  });
+}
+
+function queryCommentEvents_(sheets, data, action) {
+  const exercise = String(data.exercise || "").trim();
+  validateRequired_({ exercise: exercise }, ["exercise"]);
+  const limitRows = normalizePositiveInteger_(data.limit_rows, 500, 5000);
+  const rows = getSheetRowsWithRowNumber_(sheets.commentEvents)
+    .filter(function(row) {
+      return String(row.exercise || "").trim() === exercise;
+    })
+    .filter(function(row) {
+      return String(row.comment_text || "").trim() !== "";
+    })
+    .slice(0, limitRows)
+    .map(function(row) {
+      return {
+        participant_id: String(row.participant_id || "").trim(),
+        public_alias: String(row.public_alias || row.participant_id || "").trim(),
+        exercise: String(row.exercise || "").trim(),
+        comment_type: String(row.comment_type || "").trim(),
+        comment_text: String(row.comment_text || row.comment || "").trim(),
+        clean_comment: String(row.clean_comment || "").trim(),
+        comment_hash: String(row.comment_hash || "").trim(),
+        updated_at: String(row.updated_at || "").trim(),
+        source_sheet_row_number: row._rowNumber,
+        is_test_data: normalizeBoolean_(row.is_test_data, false),
+        test_batch_id: String(row.test_batch_id || "").trim(),
+        data_origin: String(row.data_origin || "app_runtime").trim()
+      };
+    });
+
+  return {
+    status: "success",
+    action: action || "query_comment_events",
+    exercise: exercise,
+    rows: rows,
+    returned_rows: rows.length
+  };
+}
+
+function upsertCommentEvents_(sheets, data) {
+  const rows = normalizeCommentEventRows_(data.rows);
+  const writeResult = upsertManyByKey_(
+    sheets.commentEvents,
+    ["participant_id", "exercise", "comment_type"],
+    rows,
+    [
+      "participant_id",
+      "public_alias",
+      "exercise",
+      "comment_type",
+      "comment_text",
+      "clean_comment",
+      "comment_hash",
+      "updated_at",
+      "source_sheet_row_number",
+      "is_test_data",
+      "test_batch_id",
+      "data_origin"
+    ]
+  );
+  SpreadsheetApp.flush();
+  return {
+    status: "success",
+    action: "upsert_comment_events",
+    write_result: writeResult,
+    rows: rows.length
   };
 }
 
@@ -846,7 +958,7 @@ function backfillEmbeddingsCache_(sheets, data) {
   if (!dryRun && rows.length > 0) {
     writeResult = upsertManyByKey_(
       sheets.embeddingsCache,
-      ["participant_id", "exercise", "comment_hash", "embedding_version"],
+      ["exercise", "comment_hash", "embedding_version"],
       rows,
       [
         "participant_id",
@@ -942,7 +1054,7 @@ function upsertEmbeddingsCache_(sheets, data) {
   const rows = normalizeEmbeddingsCacheRows_(data.rows);
   const writeResult = upsertManyByKey_(
     sheets.embeddingsCache,
-    ["participant_id", "exercise", "comment_hash", "embedding_version"],
+    ["exercise", "comment_hash", "embedding_version"],
     rows,
     [
       "participant_id",
@@ -989,7 +1101,7 @@ function upsertProjectionCache_(sheets, data) {
   const rows = normalizeProjectionCacheRows_(data.rows, "", "");
   const writeResult = upsertManyByKey_(
     sheets.projectionCache,
-    ["participant_id", "exercise", "comment_hash", "projection_version"],
+    ["exercise", "comment_hash", "projection_version"],
     rows,
     [
       "participant_id",
@@ -1071,7 +1183,7 @@ function rebuildProjectionCache_(sheets, data) {
     } else if (rows.length > 0) {
       writeResult = upsertManyByKey_(
         sheets.projectionCache,
-        ["participant_id", "exercise", "comment_hash", "projection_version"],
+        ["exercise", "comment_hash", "projection_version"],
         rows,
         [
           "participant_id",

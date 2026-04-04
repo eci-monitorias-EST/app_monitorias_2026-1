@@ -23,10 +23,13 @@ class RemoteSyncClient:
     def sync_feedback(self, feedback_payload: dict[str, Any]) -> None:
         return None
 
+    def sync_comment_events(self, comment_events_payload: dict[str, Any]) -> None:
+        return None
+
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
         return None
 
-    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
         return None
 
     def query_embeddings_cache(
@@ -34,7 +37,6 @@ class RemoteSyncClient:
         *,
         exercise: str,
         embedding_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         return None
@@ -47,7 +49,6 @@ class RemoteSyncClient:
         *,
         exercise: str,
         projection_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         return None
@@ -153,12 +154,15 @@ class AppsScriptSyncClient(RemoteSyncClient):
     def sync_feedback(self, feedback_payload: dict[str, Any]) -> None:
         self._request("upsert_feedback", feedback_payload)
 
+    def sync_comment_events(self, comment_events_payload: dict[str, Any]) -> None:
+        self._request("upsert_comment_events", comment_events_payload)
+
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
         self._request("marcar_completado", completion_payload)
 
-    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
         payload = self._request(
-            "query_projection_comments",
+            "query_comment_events",
             {"exercise": exercise, "limit_rows": limit_rows},
         )
         if payload is None:
@@ -170,7 +174,6 @@ class AppsScriptSyncClient(RemoteSyncClient):
         *,
         exercise: str,
         embedding_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         payload = self._request(
@@ -178,7 +181,6 @@ class AppsScriptSyncClient(RemoteSyncClient):
             {
                 "exercise": exercise,
                 "embedding_version": embedding_version,
-                "participant_ids": participant_ids,
                 "comment_hashes": comment_hashes,
             },
         )
@@ -194,7 +196,6 @@ class AppsScriptSyncClient(RemoteSyncClient):
         *,
         exercise: str,
         projection_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         payload = self._request(
@@ -202,7 +203,6 @@ class AppsScriptSyncClient(RemoteSyncClient):
             {
                 "exercise": exercise,
                 "projection_version": projection_version,
-                "participant_ids": participant_ids,
                 "comment_hashes": comment_hashes,
             },
         )

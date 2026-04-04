@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import Any
 
 from domain.models import ExerciseProgress, FeedbackRecord, ParticipantRecord
+from services.comment_events import build_comment_event_records
 from services.remote_sync import RemoteSyncClient
 from services.storage import JsonStateStore
 
@@ -48,6 +49,21 @@ class SessionService:
                 "payload": self._build_remote_progress_payload(progress),
             }
         )
+        comment_events = build_comment_event_records(
+            participant_id=record.participant_id,
+            public_alias=record.public_alias,
+            exercise=exercise,
+            progress=progress,
+        )
+        if comment_events:
+            self.remote_sync.sync_comment_events(
+                {
+                    "participant_id": record.participant_id,
+                    "public_alias": record.public_alias,
+                    "exercise": exercise,
+                    "rows": [event.to_dict() for event in comment_events],
+                }
+            )
         return record
 
     def save_feedback(

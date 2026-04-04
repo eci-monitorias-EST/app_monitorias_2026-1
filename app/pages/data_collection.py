@@ -8,6 +8,16 @@ from config.settings import (
     get_form_token,
     get_script_url,
 )
+from services.profile_constraints import (
+    DEFAULT_AGE,
+    GRADE_OPTIONS,
+    MAX_AGE,
+    MIN_AGE,
+    SEX_OPTIONS,
+    clamp_age,
+    resolve_option_index,
+    validate_profile_fields,
+)
 
 
 @st.dialog("Autorización de tratamiento de datos")
@@ -128,9 +138,8 @@ def _render_update_section(existing_profile: dict) -> None:
         with st.form("formulario_actualizar_datos"):
             nombre = st.text_input("Nombre", value=str(existing_profile.get("nombre", "")))
             sexo_actual = str(existing_profile.get("sexo", ""))
-            opciones_sexo = ["", "Masculino", "Femenino", "Otro"]
-            sexo_index = opciones_sexo.index(sexo_actual) if sexo_actual in opciones_sexo else 0
-            sexo = st.selectbox("Sexo", opciones_sexo, index=sexo_index)
+            sexo_index = resolve_option_index(SEX_OPTIONS, sexo_actual)
+            sexo = st.selectbox("Sexo", SEX_OPTIONS, index=sexo_index)
             colegio = st.text_input("Colegio", value=str(existing_profile.get("colegio", "")))
             submit_update = st.form_submit_button("Actualizar datos")
 
@@ -189,16 +198,24 @@ def render() -> None:
 
     with st.form("formulario_recoleccion"):
         nombre = st.text_input("Nombre")
-        sexo = st.selectbox("Sexo", ["", "Masculino", "Femenino", "Otro"])
+        sexo = st.selectbox("Sexo", SEX_OPTIONS)
         colegio = st.text_input("Colegio")
+        edad = st.number_input("Edad", min_value=MIN_AGE, max_value=MAX_AGE, value=DEFAULT_AGE, step=1)
+        grado = st.selectbox("Grado o nivel", GRADE_OPTIONS)
 
         submit = st.form_submit_button("Enviar")
 
     if not submit:
         return
 
-    if not all([nombre, sexo, colegio]):
+    if not all([nombre, sexo, colegio, grado]):
         st.warning("Completa todos los campos.")
+        return
+
+    try:
+        validate_profile_fields(sexo=sexo, edad=int(edad), grado=grado)
+    except ValueError as exc:
+        st.warning(str(exc))
         return
 
     payload = {
@@ -208,6 +225,8 @@ def render() -> None:
         "nombre": nombre.strip(),
         "sexo": sexo,
         "colegio": colegio.strip(),
+        "edad": clamp_age(int(edad)),
+        "grado": grado,
         "ejercicio": "bienvenida",
         "comentario": "",
     }

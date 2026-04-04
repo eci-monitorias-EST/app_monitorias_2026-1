@@ -45,28 +45,27 @@ class _RemoteSyncStub:
     def __init__(
         self,
         *,
-        projection_comments: list[dict[str, Any]] | None = None,
+        comment_events: list[dict[str, Any]] | None = None,
         embedding_rows: list[dict[str, Any]] | None = None,
         projection_rows: list[dict[str, Any]] | None = None,
     ) -> None:
-        self.projection_comments = projection_comments
+        self.comment_events = comment_events
         self.embedding_rows = embedding_rows
         self.projection_rows = projection_rows
         self.saved_embeddings: list[dict[str, Any]] = []
         self.saved_projections: list[dict[str, Any]] = []
 
-    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
         del limit_rows
-        if self.projection_comments is None:
+        if self.comment_events is None:
             return None
-        return [row for row in self.projection_comments if row["exercise"] == exercise]
+        return [row for row in self.comment_events if row["exercise"] == exercise]
 
     def query_embeddings_cache(
         self,
         *,
         exercise: str,
         embedding_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         del embedding_version
@@ -76,7 +75,6 @@ class _RemoteSyncStub:
             row
             for row in self.embedding_rows
             if row["exercise"] == exercise
-            and row["participant_id"] in participant_ids
             and row["comment_hash"] in comment_hashes
         ]
 
@@ -88,7 +86,6 @@ class _RemoteSyncStub:
         *,
         exercise: str,
         projection_version: str,
-        participant_ids: list[str],
         comment_hashes: list[str],
     ) -> list[dict[str, Any]] | None:
         del projection_version
@@ -98,7 +95,6 @@ class _RemoteSyncStub:
             row
             for row in self.projection_rows
             if row["exercise"] == exercise
-            and row["participant_id"] in participant_ids
             and row["comment_hash"] in comment_hashes
         ]
 
@@ -215,6 +211,8 @@ def test_projection_returns_origin_for_single_point() -> None:
             "y": 0.0,
             "z": 0.0,
             "current_user": True,
+            "comment_type": "",
+            "comment_type_label": "",
         }
     ]
 
@@ -429,12 +427,15 @@ def test_projection_build_for_exercise_reuses_remote_cache_without_recomputing()
     clean_comment = "hallazgo cuota ingreso estable"
     comment_hash = build_comment_hash(clean_comment, is_clean=True)
     remote_sync = _RemoteSyncStub(
-        projection_comments=[
+        comment_events=[
             {
                 "participant_id": "a1",
                 "public_alias": "P-001",
                 "exercise": "default_risk",
-                "combined_comment": "Hallazgo cuota ingreso estable",
+                "comment_text": "Hallazgo cuota ingreso estable",
+                "comment_type": "analytics_comment",
+                "clean_comment": clean_comment,
+                "comment_hash": comment_hash,
                 "updated_at": "2026-04-03T00:00:00Z",
                 "source_sheet_row_number": 7,
             }
@@ -482,12 +483,13 @@ def test_projection_build_for_exercise_reuses_remote_cache_without_recomputing()
 
 def test_projection_build_for_exercise_persists_missing_embedding_and_projection_cache() -> None:
     remote_sync = _RemoteSyncStub(
-        projection_comments=[
+        comment_events=[
             {
                 "participant_id": "a1",
                 "public_alias": "P-001",
                 "exercise": "default_risk",
-                "combined_comment": "Hallazgo cuota ingreso estable en mora",
+                "comment_text": "Hallazgo cuota ingreso estable en mora",
+                "comment_type": "analytics_comment",
                 "updated_at": "2026-04-03T00:00:00Z",
                 "source_sheet_row_number": 7,
             }
@@ -516,3 +518,54 @@ def test_projection_build_for_exercise_persists_missing_embedding_and_projection
     assert remote_sync.saved_embeddings[0]["comment_hash"] == projection["points"][0]["comment_hash"]
     assert len(remote_sync.saved_projections) == 1
     assert remote_sync.saved_projections[0]["projection_version"] == "proj-v1"
+
+
+def test_projection_reuses_same_cached_embedding_by_comment_hash_for_multiple_participants() -> None:
+    shared_hash = build_comment_hash("ingreso estable deuda baja", is_clean=False)
+    remote_sync = _RemoteSyncStub(
+        comment_events=[
+            {
+                "participant_id": "a1",
+                "public_alias": "P-001",
+                "exercise": "default_risk",
+                "comment_text": "Ingreso estable y deuda baja",
+                "comment_type": "dataset_comment",
+                "updated_at": "2026-04-03T00:00:00Z",
+            },
+            {
+                "participant_id": "a2",
+                "public_alias": "P-002",
+                "exercise": "default_risk",
+                "comment_text": "Ingreso estable y deuda baja",
+                "comment_type": "analytics_comment",
+                "updated_at": "2026-04-03T00:01:00Z",
+            },
+        ],
+        embedding_rows=[
+            {
+                "participant_id": "a1",
+                "exercise": "default_risk",
+                "comment_hash": shared_hash,
+                "embedding_provider": "sentence_transformers_minilm",
+                "embedding_vector_json": "[0.1, 0.2, 0.3]",
+            }
+        ],
+        projection_rows=[],
+    )
+
+    service = CommentAnalyticsService(
+        embedder=_EmbedderStub(),
+        reducer=_ReducerStub(),
+        remote_sync=remote_sync,
+        comments_config={
+            "embedding_version": "emb-v1",
+            "projection_version": "proj-v1",
+            "source_snapshot_limit": 20,
+        },
+    )
+
+    projection = service.build_projection_for_exercise("default_risk", "a1")
+
+    assert len(projection["points"]) == 2
+    assert remote_sync.saved_embeddings == []
+    assert len(remote_sync.saved_projections) == 2

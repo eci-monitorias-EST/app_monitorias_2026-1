@@ -12,7 +12,18 @@ from components.style import inject_global_styles
 from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
 from services.modeling import DatasetBundle
 from services.app_container import get_container
+from services.comment_events import COMMENT_TYPE_LABELS
+from services.profile_constraints import (
+    DEFAULT_AGE,
+    GRADE_OPTIONS,
+    MAX_AGE,
+    MIN_AGE,
+    SEX_OPTIONS,
+    clamp_age,
+    validate_profile_fields,
+)
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
+from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
 
 
@@ -29,6 +40,7 @@ class SequentialLearningFlow:
         st.session_state.setdefault("participant_id", None)
         st.session_state.setdefault("access_key", "")
         st.session_state.setdefault("selected_exercise", None)
+        st.session_state.setdefault("exercise_step_state", {})
         st.session_state.setdefault("prediction_cache", None)
         st.session_state.setdefault("data_consent", None)
 
@@ -99,11 +111,8 @@ class SequentialLearningFlow:
 
     def render(self) -> None:
         inject_global_styles()
+        self._sync_flow_state_with_selected_exercise()
         step = self.state_machine.get_step(st.session_state["current_step"])
-        st.session_state["max_unlocked_step"] = max(
-            st.session_state["max_unlocked_step"],
-            st.session_state["current_step"],
-        )
         self._render_sidebar()
         st.progress(
             step.id / self.state_machine.total_steps,
@@ -112,6 +121,66 @@ class SequentialLearningFlow:
         render_method: Callable[[], None] = getattr(self, step.renderer_name)
         render_method()
         self._render_navigation(step.id)
+
+    def _sync_flow_state_with_selected_exercise(self) -> None:
+        record = self._current_record()
+        exercise = st.session_state.get("selected_exercise")
+
+        if exercise and record is not None and record.selected_exercise == exercise:
+            exercise_step_state = st.session_state["exercise_step_state"]
+            base_state = derive_exercise_flow_state(
+                record,
+                self.validator.has_meaningful_learning_text,
+            )
+            saved_current_step = int(
+                exercise_step_state.get(exercise, {}).get("current_step", base_state.current_step)
+            )
+            current_step = max(4, min(saved_current_step, base_state.max_unlocked_step))
+            exercise_step_state[exercise] = {"current_step": current_step}
+            st.session_state["current_step"] = current_step
+            st.session_state["max_unlocked_step"] = base_state.max_unlocked_step
+            return
+
+        st.session_state["max_unlocked_step"] = derive_max_unlocked_step(
+            record,
+            self.validator.has_meaningful_learning_text,
+        )
+        st.session_state["current_step"] = min(
+            st.session_state["current_step"],
+            st.session_state["max_unlocked_step"],
+        )
+
+    def _set_current_step(self, step_id: int) -> None:
+        st.session_state["current_step"] = step_id
+        exercise = st.session_state.get("selected_exercise")
+        if exercise and step_id >= 4:
+            st.session_state["exercise_step_state"][exercise] = {"current_step": step_id}
+
+    def _switch_selected_exercise(self, record: ParticipantRecord, exercise: str) -> None:
+        current_exercise = st.session_state.get("selected_exercise")
+        if current_exercise:
+            self._set_current_step(st.session_state["current_step"])
+
+        self.container.sessions.select_exercise(record.participant_id, exercise)
+        st.session_state["selected_exercise"] = exercise
+
+        refreshed_record = self.container.sessions.get_record(record.participant_id)
+        if refreshed_record is None:
+            raise ValueError("No fue posible recargar la sesión después de cambiar el ejercicio.")
+
+        exercise_state = derive_exercise_flow_state(
+            refreshed_record,
+            self.validator.has_meaningful_learning_text,
+        )
+        saved_step = int(
+            st.session_state["exercise_step_state"].get(exercise, {}).get(
+                "current_step",
+                exercise_state.current_step,
+            )
+        )
+        self._set_current_step(max(4, min(saved_step, exercise_state.max_unlocked_step)))
+        st.session_state["max_unlocked_step"] = exercise_state.max_unlocked_step
+        st.session_state["prediction_cache"] = None
 
     def _render_sidebar(self) -> None:
         current_step = st.session_state["current_step"]
@@ -129,7 +198,7 @@ class SequentialLearningFlow:
                     use_container_width=True,
                     disabled=(not can_open) or is_current,
                 ):
-                    st.session_state["current_step"] = step.id
+                    self._set_current_step(step.id)
                     st.rerun()
             if record:
                 st.divider()
@@ -145,7 +214,7 @@ class SequentialLearningFlow:
         back_col, next_col = st.columns(2)
         with back_col:
             if st.button("Atrás", use_container_width=True, disabled=step == 1):
-                st.session_state["current_step"] = self.state_machine.previous_step_id(step)
+                self._set_current_step(self.state_machine.previous_step_id(step))
                 st.rerun()
         with next_col:
             if step == self.state_machine.total_steps:
@@ -154,11 +223,7 @@ class SequentialLearningFlow:
             can_next = next_step is not None
             if st.button("Siguiente", use_container_width=True, disabled=not can_next):
                 assert next_step is not None
-                st.session_state["current_step"] = next_step
-                st.session_state["max_unlocked_step"] = max(
-                    st.session_state["max_unlocked_step"],
-                    next_step,
-                )
+                self._set_current_step(next_step)
                 st.rerun()
             if not can_next:
                 st.caption("Completa el entregable del paso actual para continuar.")
@@ -220,28 +285,10 @@ class SequentialLearningFlow:
                 help="Usa tu correo institucional o un código estable y único.",
             )
             nombre = st.text_input("Nombre")
-            sexo = st.selectbox("Sexo", ["", "Masculino", "Femenino", "Otro"])
+            sexo = st.selectbox("Sexo", SEX_OPTIONS)
             colegio = st.text_input("Colegio")
-            edad = st.number_input("Edad", min_value=10, max_value=100, value=18, step=1)
-            grado = st.selectbox(
-                "Grado o nivel",
-                [
-                    "",
-                    "Primero",
-                    "Segundo",
-                    "Tercero",
-                    "Cuarto",
-                    "Quinto",
-                    "Sexto",
-                    "Séptimo",
-                    "Octavo",
-                    "Noveno",
-                    "Décimo",
-                    "Undécimo",
-                    "Universitario",
-                    "Otro",
-                ],
-            )
+            edad = st.number_input("Edad", min_value=MIN_AGE, max_value=MAX_AGE, value=DEFAULT_AGE, step=1)
+            grado = st.selectbox("Grado o nivel", GRADE_OPTIONS)
             interes_carrera = st.text_area("¿Qué te llamó la atención de Ingeniería Estadística?")
             matematicas_avanzadas = st.text_area("¿Qué es lo más avanzado de matemáticas que has visto?")
             submitted = st.form_submit_button("Iniciar o retomar sesión", type="primary")
@@ -259,6 +306,11 @@ class SequentialLearningFlow:
             ):
                 st.warning("Completa todos los campos obligatorios de la sesión.")
                 return
+            try:
+                validate_profile_fields(sexo=sexo, edad=int(edad), grado=grado)
+            except ValueError as exc:
+                st.warning(str(exc))
+                return
             record = self.container.sessions.login_or_resume(
                 access_key=access_key,
                 profile={
@@ -266,7 +318,7 @@ class SequentialLearningFlow:
                     "nombre": nombre.strip(),
                     "sexo": sexo,
                     "colegio": colegio.strip(),
-                    "edad": int(edad),
+                    "edad": clamp_age(int(edad)),
                     "grado": grado,
                     "interes_carrera": interes_carrera.strip(),
                     "matematicas_avanzadas": matematicas_avanzadas.strip(),
@@ -305,8 +357,7 @@ class SequentialLearningFlow:
                     unsafe_allow_html=True,
                 )
                 if st.button(f"Seleccionar {title}", key=f"select_{key}", use_container_width=True):
-                    self.container.sessions.select_exercise(record.participant_id, key)
-                    st.session_state["selected_exercise"] = key
+                    self._switch_selected_exercise(record, key)
                     st.success(f"Ejercicio seleccionado: {title}")
                     st.rerun()
         if record.selected_exercise:
@@ -525,39 +576,57 @@ class SequentialLearningFlow:
             st.info("Aún no hay comentarios completados para este ejercicio. Termina una sesión completa para alimentar el gráfico.")
             return
         df = pd.DataFrame(projection["points"])
+        color_map = {
+            "dataset_comment": "#60a5fa",
+            "analytics_comment": "#34d399",
+            "prediction_reflection": "#f59e0b",
+        }
+        symbol_map = {
+            "dataset_comment": "circle",
+            "analytics_comment": "square",
+            "prediction_reflection": "diamond",
+        }
         fig = go.Figure()
-        others = df[df["current_user"] == False]
-        mine = df[df["current_user"] == True]
-        if not others.empty:
-            fig.add_trace(
-                go.Scatter3d(
-                    x=others["x"],
-                    y=others["y"],
-                    z=others["z"],
-                    mode="markers",
-                    marker=dict(size=5, color="#93c5fd", opacity=0.45),
-                    text=others["comment"],
-                    name="Otros participantes",
+        for comment_type, label in COMMENT_TYPE_LABELS.items():
+            for is_current_user, trace_suffix in ((False, "Otros"), (True, "Tu sesión")):
+                subset = df[(df["comment_type"] == comment_type) & (df["current_user"] == is_current_user)]
+                if subset.empty:
+                    continue
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=subset["x"],
+                        y=subset["y"],
+                        z=subset["z"],
+                        mode="markers",
+                        marker=dict(
+                            size=13 if is_current_user else 6,
+                            color=color_map.get(comment_type, "#94a3b8"),
+                            opacity=0.95 if is_current_user else 0.55,
+                            symbol=symbol_map.get(comment_type, "circle"),
+                            line=dict(
+                                color="#0f172a" if is_current_user else "rgba(15,23,42,0.15)",
+                                width=4 if is_current_user else 1,
+                            ),
+                        ),
+                        text=subset["comment"],
+                        customdata=subset[["public_alias", "comment_type_label"]].to_numpy(),
+                        hovertemplate=(
+                            "<b>%{customdata[0]}</b><br>"
+                            "Tipo: %{customdata[1]}<br>"
+                            "%{text}<extra></extra>"
+                        ),
+                        name=f"{label} · {trace_suffix}",
+                    )
                 )
-            )
-        if not mine.empty:
-            fig.add_trace(
-                go.Scatter3d(
-                    x=mine["x"],
-                    y=mine["y"],
-                    z=mine["z"],
-                    mode="markers",
-                    marker=dict(size=9, color="#0f172a", opacity=0.95, symbol="diamond"),
-                    text=mine["comment"],
-                    name="Tu sesión",
-                )
-            )
         fig.update_layout(title=f"Comentarios anónimos - {bundle.label}", height=650)
         st.plotly_chart(fig, use_container_width=True)
         st.caption(
             f"Embeddings: {projection['embedding_provider']} | Reducción: {projection['reduction_provider']}"
         )
-        st.dataframe(df[["public_alias", "comment", "current_user"]], use_container_width=True)
+        st.dataframe(
+            df[["public_alias", "comment_type_label", "comment", "current_user"]],
+            use_container_width=True,
+        )
 
     def _render_final_feedback(self) -> None:
         record = self._current_record()
