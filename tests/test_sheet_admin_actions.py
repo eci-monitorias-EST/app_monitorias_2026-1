@@ -265,9 +265,8 @@ def test_build_cascade_step_payload_dry_run_excludes_confirm_phrase() -> None:
 
     payload = module.build_cascade_step_payload(
         target_sheet="respuestas",
-        participant_id="p-042",
+        participant_ids=["p-042"],
         dry_run=True,
-        confirm_phrase="CASCADE_DELETE_PARTICIPANT",
     )
 
     assert payload["target_sheet"] == "respuestas"
@@ -276,18 +275,31 @@ def test_build_cascade_step_payload_dry_run_excludes_confirm_phrase() -> None:
     assert "confirm_phrase" not in payload
 
 
-def test_build_cascade_step_payload_execute_includes_confirm_phrase() -> None:
+def test_build_cascade_step_payload_execute_uses_clear_sheet_rows_phrase() -> None:
+    # The Apps Script expects CLEAR_SHEET_ROWS for the clear_sheet_rows action,
+    # NOT the cascade-level phrase. This was a bug in the original implementation.
     module = _load_sheet_admin_actions_module()
 
     payload = module.build_cascade_step_payload(
         target_sheet="sesiones",
-        participant_id="p-042",
+        participant_ids=["p-042"],
         dry_run=False,
-        confirm_phrase="CASCADE_DELETE_PARTICIPANT",
     )
 
     assert payload["dry_run"] is False
-    assert payload["confirm_phrase"] == "CASCADE_DELETE_PARTICIPANT"
+    assert payload["confirm_phrase"] == "CLEAR_SHEET_ROWS"
+
+
+def test_build_cascade_step_payload_all_participants_sends_empty_list() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    payload = module.build_cascade_step_payload(
+        target_sheet="sesiones",
+        participant_ids=[],
+        dry_run=True,
+    )
+
+    assert payload["row_filters"]["participant_ids"] == []
 
 
 def test_run_cascade_delete_participant_dry_run_calls_all_primary_sheets(
@@ -408,6 +420,64 @@ def test_run_command_cascade_local_only_returns_planned_sheets() -> None:
 
     assert result["status"] == "local_only"
     assert result["action"] == "cascade_delete_participant"
+    assert result["sheets_planned"] == module.CASCADE_PRIMARY_SHEETS
+
+
+def test_run_cascade_delete_all_dry_run_calls_all_sheets_with_empty_participant_ids() -> None:
+    module = _load_sheet_admin_actions_module()
+    calls: list[dict[str, Any]] = []
+
+    class _FakeClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            calls.append(payload)
+            return {"status": "success", "dry_run_affected": 3}
+
+    args = Namespace(
+        execute=False,
+        confirm_phrase=None,
+        include_caches=False,
+    )
+
+    result = module.run_cascade_delete_all(args, client=_FakeClient())
+
+    assert result["scope"] == "all_participants"
+    assert result["dry_run"] is True
+    assert result["sheets_attempted"] == module.CASCADE_PRIMARY_SHEETS
+    for payload in calls:
+        assert payload["row_filters"]["participant_ids"] == []
+
+
+def test_run_cascade_delete_all_execute_requires_correct_confirm_phrase() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    class _FakeClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            return {"status": "success"}
+
+    args = Namespace(execute=True, confirm_phrase="CASCADE_DELETE_PARTICIPANT", include_caches=False)
+
+    with pytest.raises(ValueError, match="confirm_phrase inválido"):
+        module.run_cascade_delete_all(args, client=_FakeClient())
+
+
+def test_run_command_cascade_delete_all_local_only_shows_scope() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    args = Namespace(
+        command="cascade-delete-all",
+        no_request=True,
+        execute=False,
+        include_caches=False,
+        webapp_url="https://example.test",
+        token="tok",
+        timeout=10,
+    )
+
+    result = module.run_command(args)
+
+    assert result["status"] == "local_only"
+    assert result["action"] == "cascade_delete_all"
+    assert result["scope"] == "all_participants"
     assert result["sheets_planned"] == module.CASCADE_PRIMARY_SHEETS
 
 

@@ -31,6 +31,7 @@ DESTRUCTIVE_CONFIRM_PHRASES = {
     "clear_sheet_rows": "CLEAR_SHEET_ROWS",
     "rebuild_projection_cache": "REBUILD_PROJECTION_CACHE",
     "cascade_delete_participant": "CASCADE_DELETE_PARTICIPANT",
+    "cascade_delete_all": "CASCADE_DELETE_ALL",
 }
 
 # FK order: children first, parent (sesiones) last.
@@ -170,6 +171,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Incluye embeddings_cache y projection_cache en la cascada.",
     )
     add_execution_args(cascade_parser, destructive_action="cascade_delete_participant")
+
+    cascade_all_parser = subparsers.add_parser(
+        "cascade-delete-all",
+        help=(
+            "Elimina TODOS los registros de TODOS los participantes en cascada. "
+            "Mismo orden FK que cascade-delete-participant pero sin filtro de participante. "
+            "OPERACIÓN IRREVERSIBLE."
+        ),
+    )
+    cascade_all_parser.add_argument(
+        "--include-caches",
+        action="store_true",
+        help="Incluye embeddings_cache y projection_cache en la cascada.",
+    )
+    add_execution_args(cascade_all_parser, destructive_action="cascade_delete_all")
 
     embeddings_parser = subparsers.add_parser(
         "backfill-embeddings-cache",
@@ -571,16 +587,20 @@ def build_rebuild_projection_cache_payload(args: argparse.Namespace) -> dict[str
 def build_cascade_step_payload(
     *,
     target_sheet: str,
-    participant_id: str,
+    participant_ids: list[str],
     dry_run: bool,
-    confirm_phrase: str | None,
 ) -> dict[str, Any]:
+    """Build a clear_sheet_rows payload for one sheet in a cascade.
+
+    participant_ids=[] means "all participants" (Apps Script skips the filter when the list is empty).
+    The confirm_phrase for clear_sheet_rows is always injected by the caller when not dry_run.
+    """
     payload: dict[str, Any] = {
         "target_sheet": target_sheet,
         "dry_run": dry_run,
         "row_filters": {
             "row_numbers": [],
-            "participant_ids": [participant_id],
+            "participant_ids": participant_ids,
             "exercise": "",
             "test_batch_id": "",
             "data_origin": "",
@@ -589,9 +609,38 @@ def build_cascade_step_payload(
             "only_legacy": False,
         },
     }
-    if not dry_run and confirm_phrase:
-        payload["confirm_phrase"] = confirm_phrase
+    if not dry_run:
+        # Apps Script expects CLEAR_SHEET_ROWS for the clear_sheet_rows action.
+        payload["confirm_phrase"] = DESTRUCTIVE_CONFIRM_PHRASES["clear_sheet_rows"]
     return payload
+
+
+def _run_cascade(
+    *,
+    participant_ids: list[str],
+    include_caches: bool,
+    dry_run: bool,
+    client: "WebappSyncClient",  # type: ignore[name-defined]
+) -> list[dict[str, Any]]:
+    sheets = list(CASCADE_PRIMARY_SHEETS)
+    if include_caches:
+        sheets.extend(CASCADE_CACHE_SHEETS)
+
+    results: list[dict[str, Any]] = []
+    for sheet in sheets:
+        payload = build_cascade_step_payload(
+            target_sheet=sheet,
+            participant_ids=participant_ids,
+            dry_run=dry_run,
+        )
+        try:
+            response = client.run_admin_action("clear_sheet_rows", payload)
+            results.append({"sheet": sheet, "status": "ok", "response": response})
+        except Exception as exc:
+            results.append({"sheet": sheet, "status": "error", "error": str(exc)})
+            LOGGER.error("Falló la eliminación en cascada para la hoja %s: %s", sheet, exc)
+            break
+    return results
 
 
 def run_cascade_delete_participant(
@@ -613,30 +662,49 @@ def run_cascade_delete_participant(
                 f"confirm_phrase inválido para cascade_delete_participant. Esperado: {expected}"
             )
 
-    sheets = list(CASCADE_PRIMARY_SHEETS)
-    if getattr(args, "include_caches", False):
-        sheets.extend(CASCADE_CACHE_SHEETS)
-
-    results: list[dict[str, Any]] = []
-    for sheet in sheets:
-        payload = build_cascade_step_payload(
-            target_sheet=sheet,
-            participant_id=participant_id,
-            dry_run=dry_run,
-            confirm_phrase=confirm_phrase if not dry_run else None,
-        )
-        try:
-            response = client.run_admin_action("clear_sheet_rows", payload)
-            results.append({"sheet": sheet, "status": "ok", "response": response})
-        except Exception as exc:
-            results.append({"sheet": sheet, "status": "error", "error": str(exc)})
-            LOGGER.error("Falló la eliminación en cascada para la hoja %s: %s", sheet, exc)
-            break
-
+    include_caches = getattr(args, "include_caches", False)
+    results = _run_cascade(
+        participant_ids=[participant_id],
+        include_caches=include_caches,
+        dry_run=dry_run,
+        client=client,
+    )
     return {
         "participant_id": participant_id,
         "dry_run": dry_run,
-        "include_caches": getattr(args, "include_caches", False),
+        "include_caches": include_caches,
+        "sheets_attempted": [r["sheet"] for r in results],
+        "results": results,
+    }
+
+
+def run_cascade_delete_all(
+    args: argparse.Namespace,
+    *,
+    client: "WebappSyncClient",  # type: ignore[name-defined]
+) -> dict[str, Any]:
+    dry_run = not args.execute
+    confirm_phrase: str | None = getattr(args, "confirm_phrase", None)
+
+    if not dry_run:
+        expected = DESTRUCTIVE_CONFIRM_PHRASES["cascade_delete_all"]
+        if confirm_phrase != expected:
+            raise ValueError(
+                f"confirm_phrase inválido para cascade_delete_all. Esperado: {expected}"
+            )
+
+    include_caches = getattr(args, "include_caches", False)
+    # participant_ids=[] → Apps Script skips the filter → matches ALL rows.
+    results = _run_cascade(
+        participant_ids=[],
+        include_caches=include_caches,
+        dry_run=dry_run,
+        client=client,
+    )
+    return {
+        "scope": "all_participants",
+        "dry_run": dry_run,
+        "include_caches": include_caches,
         "sheets_attempted": [r["sheet"] for r in results],
         "results": results,
     }
@@ -669,20 +737,26 @@ def run_command(
     *,
     client: WebappSyncClient | None = None,
 ) -> dict[str, Any]:
-    if args.command == "cascade-delete-participant":
+    if args.command in ("cascade-delete-participant", "cascade-delete-all"):
+        include_caches = getattr(args, "include_caches", False)
+        sheets = list(CASCADE_PRIMARY_SHEETS) + (CASCADE_CACHE_SHEETS if include_caches else [])
         if args.no_request:
-            sheets = list(CASCADE_PRIMARY_SHEETS)
-            if getattr(args, "include_caches", False):
-                sheets.extend(CASCADE_CACHE_SHEETS)
-            return {
+            base: dict[str, Any] = {
                 "status": "local_only",
-                "action": "cascade_delete_participant",
-                "participant_id": str(args.participant_id).strip(),
+                "action": args.command.replace("-", "_"),
                 "dry_run": not args.execute,
                 "sheets_planned": sheets,
             }
+            if args.command == "cascade-delete-participant":
+                base["participant_id"] = str(args.participant_id).strip()
+            else:
+                base["scope"] = "all_participants"
+            return base
         effective_client = client or create_client(args)
-        result = run_cascade_delete_participant(args, client=effective_client)
+        if args.command == "cascade-delete-participant":
+            result = run_cascade_delete_participant(args, client=effective_client)
+        else:
+            result = run_cascade_delete_all(args, client=effective_client)
         all_ok = all(r["status"] == "ok" for r in result["results"])
         return {"status": "success" if all_ok else "partial_error", **result}
 
