@@ -6,3 +6,4 @@ apps_script_completo.txt
 data/processed/app_state.json
 data/processed/test_batches/
 data/processed/sheet_snapshots/
+.DS_Store
