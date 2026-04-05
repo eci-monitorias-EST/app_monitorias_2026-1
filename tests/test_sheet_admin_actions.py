@@ -260,6 +260,157 @@ def test_run_command_supports_local_only_mode(tmp_path: Path) -> None:
     }
 
 
+def test_build_cascade_step_payload_dry_run_excludes_confirm_phrase() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    payload = module.build_cascade_step_payload(
+        target_sheet="respuestas",
+        participant_id="p-042",
+        dry_run=True,
+        confirm_phrase="CASCADE_DELETE_PARTICIPANT",
+    )
+
+    assert payload["target_sheet"] == "respuestas"
+    assert payload["dry_run"] is True
+    assert payload["row_filters"]["participant_ids"] == ["p-042"]
+    assert "confirm_phrase" not in payload
+
+
+def test_build_cascade_step_payload_execute_includes_confirm_phrase() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    payload = module.build_cascade_step_payload(
+        target_sheet="sesiones",
+        participant_id="p-042",
+        dry_run=False,
+        confirm_phrase="CASCADE_DELETE_PARTICIPANT",
+    )
+
+    assert payload["dry_run"] is False
+    assert payload["confirm_phrase"] == "CASCADE_DELETE_PARTICIPANT"
+
+
+def test_run_cascade_delete_participant_dry_run_calls_all_primary_sheets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_sheet_admin_actions_module()
+    webapp_module = _load_webapp_client_module()
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    class _FakeClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            calls.append((action, payload))
+            return {"status": "success", "dry_run_affected": 1}
+
+    args = Namespace(
+        participant_id="p-042",
+        execute=False,
+        confirm_phrase=None,
+        include_caches=False,
+    )
+
+    result = module.run_cascade_delete_participant(args, client=_FakeClient())
+
+    assert result["dry_run"] is True
+    assert result["participant_id"] == "p-042"
+    assert result["include_caches"] is False
+    assert result["sheets_attempted"] == module.CASCADE_PRIMARY_SHEETS
+    assert len(calls) == len(module.CASCADE_PRIMARY_SHEETS)
+    for action, _ in calls:
+        assert action == "clear_sheet_rows"
+
+
+def test_run_cascade_delete_participant_include_caches_adds_cache_sheets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_sheet_admin_actions_module()
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    class _FakeClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            calls.append((action, payload))
+            return {"status": "success", "dry_run_affected": 0}
+
+    args = Namespace(
+        participant_id="p-007",
+        execute=False,
+        confirm_phrase=None,
+        include_caches=True,
+    )
+
+    result = module.run_cascade_delete_participant(args, client=_FakeClient())
+
+    expected_sheets = module.CASCADE_PRIMARY_SHEETS + module.CASCADE_CACHE_SHEETS
+    assert result["sheets_attempted"] == expected_sheets
+    assert result["include_caches"] is True
+
+
+def test_run_cascade_delete_participant_execute_requires_confirm_phrase() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    class _FakeClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            return {"status": "success"}
+
+    args = Namespace(
+        participant_id="p-042",
+        execute=True,
+        confirm_phrase=None,
+        include_caches=False,
+    )
+
+    with pytest.raises(ValueError, match="confirm_phrase inválido"):
+        module.run_cascade_delete_participant(args, client=_FakeClient())
+
+
+def test_run_cascade_delete_participant_stops_on_first_error() -> None:
+    module = _load_sheet_admin_actions_module()
+    calls: list[str] = []
+
+    class _FlakyClient:
+        def run_admin_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+            sheet = payload["target_sheet"]
+            calls.append(sheet)
+            if sheet == "respuestas":
+                raise RuntimeError("timeout")
+            return {"status": "success"}
+
+    args = Namespace(
+        participant_id="p-fail",
+        execute=False,
+        confirm_phrase=None,
+        include_caches=False,
+    )
+
+    result = module.run_cascade_delete_participant(args, client=_FlakyClient())
+
+    # Stops at respuestas (index 1), comment_events ran, rest skipped
+    assert calls == ["comment_events", "respuestas"]
+    error_result = next(r for r in result["results"] if r["sheet"] == "respuestas")
+    assert error_result["status"] == "error"
+
+
+def test_run_command_cascade_local_only_returns_planned_sheets() -> None:
+    module = _load_sheet_admin_actions_module()
+
+    args = Namespace(
+        command="cascade-delete-participant",
+        no_request=True,
+        participant_id="p-999",
+        execute=False,
+        include_caches=False,
+        webapp_url="https://example.test",
+        token="tok",
+        timeout=10,
+    )
+
+    result = module.run_command(args)
+
+    assert result["status"] == "local_only"
+    assert result["action"] == "cascade_delete_participant"
+    assert result["sheets_planned"] == module.CASCADE_PRIMARY_SHEETS
+
+
 def test_webapp_client_posts_query_embeddings_cache_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_webapp_client_module()
     captured: dict[str, Any] = {}

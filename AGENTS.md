@@ -27,6 +27,7 @@ Use these skills for detailed patterns on-demand:
 | `detectar-falsos-positivos` | Evaluar si un hallazgo del pipeline es falso positivo, error válido, ambiguo o ruido no material | [SKILL.md](skills/detectar-falsos-positivos/SKILL.md) |
 | `detectar-procesos-repetitivos` | Detectar patrones repetidos y proponer nuevas skills antes de seguir improvisando | [SKILL.md](skills/detectar-procesos-repetitivos/SKILL.md) |
 | `imputacion-sintetica-sheet-3d` | Poblar Sheets con datos sintéticos, validar flujo remoto y generar visualizaciones 3D HTML | [SKILL.md](skills/imputacion-sintetica-sheet-3d/SKILL.md) |
+| `cascade-delete-participante` | Eliminar en cascada todos los registros de un participante respetando el orden de FK | [SKILL.md](skills/cascade-delete-participante/SKILL.md) |
 
 ### Auto-invoke Skills
 
@@ -44,6 +45,8 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Seeding synthetic data into Google Sheets or generating 3D HTML outside Streamlit | `imputacion-sintetica-sheet-3d` |
 | Validating or deleting a synthetic test batch | `imputacion-sintetica-sheet-3d` |
 | Evaluating predictions, classification results or pipeline findings for correctness | `detectar-falsos-positivos` |
+| Deleting a participant's data from Google Sheets | `cascade-delete-participante` |
+| Resetting a participant or cleaning up corrupted/test participant records in the Sheet | `cascade-delete-participante` |
 | A pattern or workflow has appeared 3 or more times in a session | `detectar-procesos-repetitivos` |
 | Writing Python tests with pytest | `pytest` |
 
