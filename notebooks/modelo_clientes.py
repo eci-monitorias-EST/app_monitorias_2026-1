@@ -215,3 +215,62 @@ print(f'Recall:    {recall_score(y_test, y_pred_rf_youden):.4f}')
 print(f'Precision: {precision_score(y_test, y_pred_rf_youden):.4f}')
 print(f'F1:        {f1_score(y_test, y_pred_rf_youden):.4f}')
 print(confusion_matrix(y_test, y_pred_rf_youden))
+
+## Modelo con árbol de decisión
+from sklearn.tree import DecisionTreeClassifier
+
+dt = DecisionTreeClassifier(class_weight='balanced', random_state=123, max_depth=5)
+dt.fit(X_train, y_train)
+
+y_pred_dt = dt.predict(X_test)
+y_prob_dt = dt.predict_proba(X_test)[:, 1]
+# Umbral 0.5
+print(f'Accuracy:  {accuracy_score(y_test, y_pred_dt):.4f}')
+print(f'Precision: {precision_score(y_test, y_pred_dt):.4f}')
+print(f'Recall:    {recall_score(y_test, y_pred_dt):.4f}')
+print(f'F1:        {f1_score(y_test, y_pred_dt):.4f}')
+print(f'AUC-ROC:   {roc_auc_score(y_test, y_prob_dt):.4f}')
+print()
+print(confusion_matrix(y_test, y_pred_dt))
+
+
+# Youden
+fpr_dt, tpr_dt, thresholds_dt = roc_curve(y_test, y_prob_dt)
+youden_dt = tpr_dt - fpr_dt
+umbral_dt = thresholds_dt[np.argmax(youden_dt)]
+y_pred_dt_youden = (y_prob_dt >= umbral_dt).astype(int)
+
+print(f'\n--- Umbral Youden ({umbral_dt:.4f}) ---')
+print(f'Accuracy:  {accuracy_score(y_test, y_pred_dt_youden):.4f}')
+print(f'Precision: {precision_score(y_test, y_pred_dt_youden):.4f}')
+print(f'Recall:    {recall_score(y_test, y_pred_dt_youden):.4f}')
+print(f'F1:        {f1_score(y_test, y_pred_dt_youden):.4f}')
+print(f'AUC-ROC:   {roc_auc_score(y_test, y_prob_dt):.4f}')
+print(confusion_matrix(y_test, y_pred_dt_youden))
+
+from xgboost import XGBClassifier
+
+X_train = X_train.astype({col: 'int' for col in X_train.select_dtypes('category').columns})
+X_test = X_test.astype({col: 'int' for col in X_test.select_dtypes('category').columns})
+scale = (y_train == 0).sum() / (y_train == 1).sum()
+
+xgb = XGBClassifier(scale_pos_weight=scale, random_state=123, 
+                    n_estimators=100, eval_metric='logloss')
+xgb.fit(X_train, y_train)
+
+y_pred_xgb = xgb.predict(X_test)
+y_prob_xgb = xgb.predict_proba(X_test)[:, 1]
+
+# Youden
+fpr_xgb, tpr_xgb, thresholds_xgb = roc_curve(y_test, y_prob_xgb)
+youden_xgb = tpr_xgb - fpr_xgb
+umbral_xgb = thresholds_xgb[np.argmax(youden_xgb)]
+y_pred_xgb_youden = (y_prob_xgb >= umbral_xgb).astype(int)
+
+print(f'--- Umbral Youden ({umbral_xgb:.4f}) ---')
+print(f'Accuracy:  {accuracy_score(y_test, y_pred_xgb_youden):.4f}')
+print(f'Precision: {precision_score(y_test, y_pred_xgb_youden):.4f}')
+print(f'Recall:    {recall_score(y_test, y_pred_xgb_youden):.4f}')
+print(f'F1:        {f1_score(y_test, y_pred_xgb_youden):.4f}')
+print(f'AUC-ROC:   {roc_auc_score(y_test, y_prob_xgb):.4f}')
+print(confusion_matrix(y_test, y_pred_xgb_youden))
