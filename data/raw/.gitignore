@@ -1,2 +1,6 @@
 /german_credit
 /default_clientes
+__pycache__/
+*.pyc
+apps_script_completo.txt
+
