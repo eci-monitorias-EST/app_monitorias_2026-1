@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Callable
 
 import pandas as pd
@@ -13,15 +14,6 @@ from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
 from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
-from services.profile_constraints import (
-    DEFAULT_AGE,
-    GRADE_OPTIONS,
-    MAX_AGE,
-    MIN_AGE,
-    SEX_OPTIONS,
-    clamp_age,
-    validate_profile_fields,
-)
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
 from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
@@ -41,6 +33,7 @@ class SequentialLearningFlow:
         st.session_state.setdefault("access_code", "")
         st.session_state.setdefault("selected_exercise", None)
         st.session_state.setdefault("exercise_step_state", {})
+        st.session_state.setdefault("profile_continue_requested", False)
         st.session_state.setdefault("prediction_cache", None)
         st.session_state.setdefault("data_consent", None)
 
@@ -83,6 +76,21 @@ class SequentialLearningFlow:
     ) -> ExerciseProgress | None:
         return record.exercise_progress.get(exercise) if record else None
 
+    def _exercise_completion_percent(self, record: ParticipantRecord, exercise: str) -> int:
+        progress = self._exercise_progress(record, exercise)
+        if progress is None:
+            return 0
+        completed = 0
+        if self.validator.has_meaningful_learning_text(progress.dataset_comment):
+            completed += 1
+        if self.validator.has_meaningful_learning_text(progress.analytics_comment):
+            completed += 1
+        if progress.prediction_output and self.validator.has_meaningful_learning_text(progress.prediction_reflection):
+            completed += 1
+        if progress.feedback is not None or progress.completed_at:
+            completed += 1
+        return int(round((completed / 4) * 100))
+
     def _build_flow_context(self) -> FlowContext:
         return FlowContext(
             record=self._current_record(),
@@ -120,7 +128,8 @@ class SequentialLearningFlow:
         )
         render_method: Callable[[], None] = getattr(self, step.renderer_name)
         render_method()
-        self._render_navigation(step.id)
+        if step.id not in {1, 2}:
+            self._render_navigation(step.id)
 
     def _sync_flow_state_with_selected_exercise(self) -> None:
         record = self._current_record()
@@ -136,9 +145,11 @@ class SequentialLearningFlow:
             saved_current_step = int(
                 exercise_step_state.get(exercise, {}).get("current_step", base_state.current_step)
             )
-            if requested_step <= 3:
+            if not bool(st.session_state.get("profile_continue_requested", False)):
+                current_step = min(requested_step, 2)
+            elif requested_step <= 2:
                 current_step = requested_step
-            elif saved_current_step <= 3:
+            elif saved_current_step <= 2:
                 current_step = saved_current_step
             else:
                 current_step = min(saved_current_step, base_state.max_unlocked_step)
@@ -158,13 +169,15 @@ class SequentialLearningFlow:
 
     def _set_current_step(self, step_id: int) -> None:
         st.session_state["current_step"] = step_id
+        if step_id >= 3:
+            st.session_state["profile_continue_requested"] = True
         exercise = st.session_state.get("selected_exercise")
-        if exercise and step_id >= 4:
+        if exercise and step_id >= 3:
             st.session_state["exercise_step_state"][exercise] = {"current_step": step_id}
 
     def _switch_selected_exercise(self, record: ParticipantRecord, exercise: str) -> None:
         current_exercise = st.session_state.get("selected_exercise")
-        if current_exercise:
+        if current_exercise and st.session_state["current_step"] >= 3:
             self._set_current_step(st.session_state["current_step"])
 
         self.container.sessions.select_exercise(record.participant_id, exercise)
@@ -184,7 +197,7 @@ class SequentialLearningFlow:
                 exercise_state.current_step,
             )
         )
-        self._set_current_step(max(4, min(saved_step, exercise_state.max_unlocked_step)))
+        self._set_current_step(max(3, min(saved_step, exercise_state.max_unlocked_step)))
         st.session_state["max_unlocked_step"] = exercise_state.max_unlocked_step
         st.session_state["prediction_cache"] = None
 
@@ -242,125 +255,144 @@ class SequentialLearningFlow:
             <section class="bankify-hero">
                 <h1>Bankify Analytics Lab</h1>
                 <p>
-                    Eres parte del equipo de Ingeniería Estadística de Bankify. Tu misión es estudiar datos reales,
-                    argumentar hallazgos y explicar decisiones de modelos que ayudan a aprobar créditos y anticipar mora.
+                    Eres parte del equipo de Ingenier\u00eda Estad\u00edstica de Bankify. Tu misi\u00f3n es estudiar datos reales,
+                    argumentar hallazgos y explicar decisiones de modelos que ayudan a aprobar cr\u00e9ditos y anticipar mora.
                 </p>
                 <div>
-                    <span class="bankify-pill">Storytelling académico</span>
+                    <span class="bankify-pill">Storytelling acad\u00e9mico</span>
                     <span class="bankify-pill">Modelos explicables</span>
-                    <span class="bankify-pill">Comentarios anónimos</span>
+                    <span class="bankify-pill">Comentarios an\u00f3nimos</span>
                 </div>
             </section>
             """,
             unsafe_allow_html=True,
         )
-        col1, col2, col3 = st.columns(3)
-        for column, title, body in [
-            (col1, "Reto 1", "Determinar si un perfil crediticio merece aprobación o revisión adicional."),
-            (col2, "Reto 2", "Estimar el riesgo de mora y justificarlo con evidencia cuantitativa."),
-            (col3, "Reto 3", "Comparar tus interpretaciones con comentarios anónimos de otros estudiantes."),
-        ]:
-            with column:
-                st.markdown(
-                    f"<div class='bankify-card'><h4>{title}</h4><p>{body}</p></div>",
-                    unsafe_allow_html=True,
+        record = self._current_record()
+        if record:
+            st.success(f"Sesi\u00f3n activa: {record.public_alias}")
+            if record.access_code_display:
+                st.markdown("#### C\u00f3digo de acceso")
+                st.code(record.access_code_display)
+                st.caption("Gu\u00e1rdalo para retomar tu avance m\u00e1s adelante.")
+            return
+
+        _, form_col, _ = st.columns([1, 1.35, 1])
+        with form_col:
+            st.markdown(
+                """
+                <div class="bankify-access-heading">
+                    <h2>Acceso</h2>
+                    <p>Ingresa tus datos para comenzar</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            with st.form("welcome_access_form"):
+                nombre = st.text_input("Nombre", placeholder="Ej. Alex Rivera")
+                access_code = st.text_input(
+                    "C\u00f3digo de acceso",
+                    placeholder="Ingresa tu c\u00f3digo para retomar",
+                    help="Usa este campo solo si ya tienes una sesi\u00f3n activa.",
                 )
-        st.info(
-            "El sistema genera automáticamente un código de acceso por sesión. Guárdalo: es el mecanismo oficial para retomar tu avance."
-        )
+                st.caption("opcional si ya se tiene una sesi\u00f3n iniciada.")
+                submitted = st.form_submit_button("Comenzar experiencia", type="primary", use_container_width=True)
+
+        if not submitted:
+            return
+
+        if not nombre.strip():
+            st.warning("Ingresa tu nombre para comenzar.")
+            return
+
+        profile = {
+            "Dia": datetime.now().strftime("%Y-%m-%d"),
+            "nombre": nombre.strip(),
+        }
+        if access_code.strip():
+            recovered = self.container.sessions.recover(access_code)
+            if recovered is None:
+                st.error("No encontramos una sesi\u00f3n con ese c\u00f3digo. Verifica el c\u00f3digo e int\u00e9ntalo de nuevo.")
+                return
+            record = self.container.sessions.login_or_resume(access_code, profile)
+        else:
+            record = self.container.sessions.start_session(profile=profile)
+
+        st.session_state["participant_id"] = record.participant_id
+        st.session_state["access_code"] = record.access_code_display
+        if record.selected_exercise:
+            st.session_state["selected_exercise"] = record.selected_exercise
+        self._set_current_step(2)
+        st.rerun()
 
     def _render_data_collection(self) -> None:
         record = self._current_record()
-        st.title("Recolección de datos y recuperación de sesión")
-        st.write(
-            "Crea una nueva sesión y el sistema te entregará un código de acceso único. "
-            "Para reanudar, ingresa ese código."
+        if not record:
+            st.warning("Primero activa o recupera tu sesi\u00f3n en la bienvenida.")
+            return
+
+        profile_name = str(record.profile.get("nombre", "")).strip() or record.public_alias
+        st.markdown(
+            f"""
+            <section class="bankify-profile-hero">
+                <div>
+                    <p class="bankify-profile-kicker">Bienvenida, {profile_name}</p>
+                    <span class="bankify-code-pill">C\u00f3digo: {record.access_code_display}</span>
+                    <p class="bankify-profile-copy">
+                        Tu sesi\u00f3n est\u00e1 activa. Escoge el proceso que deseas desarrollar hoy y contin\u00faa
+                        con tu an\u00e1lisis de riesgo en el laboratorio de simulaci\u00f3n bancaria.
+                    </p>
+                </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
         )
-        if record:
-            st.success(f"Sesión recuperada: {record.public_alias}")
-            if record.access_code_display:
-                st.markdown("#### Código de acceso de esta sesión")
-                st.code(record.access_code_display)
-                st.caption("Guárdalo. Este código es la forma oficial de reanudar la sesión.")
-            st.json(record.profile)
-            return
-        if st.session_state["data_consent"] is not True:
-            self._consent_dialog()
-            if st.session_state["data_consent"] is False:
-                st.error("No autorizaste el tratamiento de datos. No es posible continuar con el registro.")
-                if st.button("Volver a mostrar autorización"):
-                    st.session_state["data_consent"] = None
-                    st.rerun()
-            else:
-                st.info("Debes autorizar el tratamiento de datos para habilitar el formulario.")
-            return
-        with st.expander("Reanudar una sesión existente", expanded=True):
-            with st.form("participant_recovery_form"):
-                access_code = st.text_input(
-                    "Código de acceso",
-                    help="Ingresa el código que recibiste al crear la sesión.",
-                )
-                recovery_submitted = st.form_submit_button("Reanudar sesión")
-            if recovery_submitted:
-                recovered = self.container.sessions.recover(access_code)
-                if recovered is None:
-                    st.error("No encontramos una sesión con ese código. Verifica el código e intentá de nuevo.")
-                    return
-                st.session_state["participant_id"] = recovered.participant_id
-                st.session_state["access_code"] = recovered.access_code_display
-                if recovered.selected_exercise:
-                    st.session_state["selected_exercise"] = recovered.selected_exercise
-                st.success(f"Sesión recuperada: {recovered.public_alias}")
-                st.rerun()
-        st.divider()
-        st.markdown("### Crear una nueva sesión")
-        with st.form("participant_login_form"):
-            nombre = st.text_input("Nombre")
-            sexo = st.selectbox("Sexo", SEX_OPTIONS)
-            colegio = st.text_input("Colegio")
-            edad = st.number_input("Edad", min_value=MIN_AGE, max_value=MAX_AGE, value=DEFAULT_AGE, step=1)
-            grado = st.selectbox("Grado o nivel", GRADE_OPTIONS)
-            interes_carrera = st.text_area("¿Qué te llamó la atención de Ingeniería Estadística?")
-            matematicas_avanzadas = st.text_area("¿Qué es lo más avanzado de matemáticas que has visto?")
-            submitted = st.form_submit_button("Crear sesión y generar código", type="primary")
-        if submitted:
-            if not all(
-                [
-                    nombre.strip(),
-                    sexo.strip(),
-                    colegio.strip(),
-                    grado.strip(),
-                    interes_carrera.strip(),
-                    matematicas_avanzadas.strip(),
-                ]
-            ):
-                st.warning("Completa todos los campos obligatorios de la sesión.")
-                return
-            try:
-                validate_profile_fields(sexo=sexo, edad=int(edad), grado=grado)
-            except ValueError as exc:
-                st.warning(str(exc))
-                return
-            record = self.container.sessions.start_session(
-                profile={
-                    "Dia": datetime.now().strftime("%Y-%m-%d"),
-                    "nombre": nombre.strip(),
-                    "sexo": sexo,
-                    "colegio": colegio.strip(),
-                    "edad": clamp_age(int(edad)),
-                    "grado": grado,
-                    "interes_carrera": interes_carrera.strip(),
-                    "matematicas_avanzadas": matematicas_avanzadas.strip(),
-                },
-            )
-            st.session_state["participant_id"] = record.participant_id
-            st.session_state["access_code"] = record.access_code_display
-            if record.selected_exercise:
-                st.session_state["selected_exercise"] = record.selected_exercise
-            st.success(
-                f"Sesión activa con alias anónimo {record.public_alias}. Guarda tu código para retomarla después."
-            )
+
+        def continue_to_dataset(exercise: str) -> None:
+            st.session_state["profile_continue_requested"] = True
+            self._switch_selected_exercise(record, exercise)
+            self._set_current_step(3)
             st.rerun()
+
+        st.markdown("### Mis Procesos")
+        header_col, history_col = st.columns([1, 1])
+        with header_col:
+            st.caption("Estado actual de tus m\u00f3dulos de an\u00e1lisis financiero.")
+            st.caption("Escoge el proceso que deseas desarrollar hoy.")
+        with history_col:
+            st.markdown("<p class='bankify-history-link'>Ver historial \u2192</p>", unsafe_allow_html=True)
+
+        options = [
+            (ExerciseOption.CREDIT_APPROVAL, "Aprobaci\u00f3n de cr\u00e9dito", "\u25a3"),
+            (ExerciseOption.DEFAULT_RISK, "Probabilidad de mora", "\u2198"),
+        ]
+        columns = st.columns(2)
+        for column, (exercise, title, icon) in zip(columns, options):
+            percent = self._exercise_completion_percent(record, exercise)
+            status = "En progreso" if percent > 0 else "Reci\u00e9n iniciado"
+            status_class = "progress" if percent > 0 else "new"
+            with column:
+                st.markdown(
+                    f"""
+                    <article class="bankify-process-card">
+                        <div class="bankify-process-top">
+                            <span class="bankify-process-icon">{icon}</span>
+                            <span class="bankify-process-status {status_class}">{status}</span>
+                        </div>
+                        <h3>{title}</h3>
+                        <div class="bankify-progress-row">
+                            <span>Progreso del m\u00f3dulo</span>
+                            <strong>{percent}%</strong>
+                        </div>
+                        <div class="bankify-progress-track">
+                            <span style="width: {percent}%"></span>
+                        </div>
+                    </article>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if st.button("Continuar", key=f"continue_{exercise}", type="primary", use_container_width=True):
+                    continue_to_dataset(exercise)
+        return
 
     def _render_exercise_choice(self) -> None:
         record = self._current_record()
@@ -400,18 +432,67 @@ class SequentialLearningFlow:
         if not record or bundle is None:
             st.warning("Selecciona un ejercicio antes de continuar.")
             return
-        st.title("Conozcamos a nuestros clientes")
-        st.caption(bundle.source_note)
-        st.dataframe(bundle.df.head(25), use_container_width=True, height=420)
-        descriptor_df = pd.DataFrame([descriptor.to_dict() for descriptor in bundle.descriptors])
-        st.markdown("### Descripción de variables")
-        st.dataframe(descriptor_df[["label", "official_name", "description", "variable_type"]], use_container_width=True)
+
+        exercise_label = ExerciseOption.LABELS[bundle.exercise]
+        st.markdown(
+            f"""
+            <section class="bankify-data-hero">
+                <div>
+                    <h1>Diccionario de Datos</h1>
+                    <span class="bankify-filter-pill">Filtrado por: {exercise_label}</span>
+                    <p>
+                        Para realizar un an\u00e1lisis de riesgo efectivo, es fundamental comprender el origen
+                        y la naturaleza de las variables que estamos procesando. A continuaci\u00f3n, se detallan
+                        las variables clave para este ejercicio de simulaci\u00f3n bancaria.
+                    </p>
+                </div>
+                <span class="bankify-book-icon">\u25f0</span>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        type_labels = {
+            "numeric": "Num\u00e9rico",
+            "categorical": "Categ\u00f3rico",
+        }
+        table_rows = "\n".join(
+            f"""
+            <div class="bankify-dictionary-row">
+                <div class="bankify-var-name">{descriptor.label}</div>
+                <div>{descriptor.description}</div>
+                <div><span class="bankify-type-badge">{type_labels.get(descriptor.variable_type, descriptor.variable_type.title())}</span></div>
+            </div>
+            """
+            for descriptor in bundle.descriptors
+        )
+        st.markdown(
+            f"""
+            <section class="bankify-dictionary-card">
+                <header>
+                    <span class="bankify-section-icon">\u25c6</span>
+                    <h2>{exercise_label}</h2>
+                </header>
+                <div class="bankify-dictionary-grid">
+                    <div class="bankify-dictionary-head">Variable</div>
+                    <div class="bankify-dictionary-head">Descripci\u00f3n</div>
+                    <div class="bankify-dictionary-head">Tipo</div>
+                    {table_rows}
+                </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
+
         progress = self._exercise_progress(record, bundle.exercise)
+        st.markdown("### \u00bfQu\u00e9 le sugiere el conjunto de datos?")
+        st.caption("Utiliza este espacio para anotar tus hallazgos iniciales.")
         with st.form("dataset_comment_form"):
             comment = st.text_area(
-                "¿Qué te sugiere este dataset?",
+                "\u00bfQu\u00e9 le sugiere el conjunto de datos?",
                 value=progress.dataset_comment if progress else "",
                 height=140,
+                label_visibility="collapsed",
             )
             submitted = st.form_submit_button("Guardar comentario")
         if submitted:
@@ -430,55 +511,24 @@ class SequentialLearningFlow:
         if not record or bundle is None:
             return
         st.title("Exploración y dashboard")
-        df = bundle.df.copy()
-        numeric_cols = df.select_dtypes(include="number").columns.tolist()
-        cat_cols = [column for column in bundle.features if column not in numeric_cols]
-        left, right = st.columns([1.2, 1.8])
-        with left:
-            target_filter = st.selectbox("Variable para gráfico principal", numeric_cols[: min(8, len(numeric_cols))])
-            cat_filter = st.selectbox("Categoría para segmentar", cat_cols[: min(8, len(cat_cols))] or [bundle.target])
-        with right:
-            st.markdown("### Instrucciones")
-            st.write(
-                "Explora distribuciones, compara segmentos y redacta un hallazgo estadístico. "
-                "Piensa cómo ese hallazgo impactaría la decisión de Bankify."
-            )
-        chart1, chart2 = st.columns(2)
-        with chart1:
-            st.plotly_chart(px.histogram(df, x=target_filter, title=f"Histograma de {target_filter}"), use_container_width=True)
-            if cat_cols:
-                st.plotly_chart(
-                    px.box(df, x=cat_filter, y=target_filter, title=f"Boxplot de {target_filter} por {cat_filter}"),
-                    use_container_width=True,
-                )
-        with chart2:
-            if cat_cols:
-                pie_counts = df[cat_filter].astype(str).value_counts().head(8).reset_index()
-                pie_counts.columns = [cat_filter, "count"]
-                st.plotly_chart(
-                    px.pie(pie_counts, names=cat_filter, values="count", title=f"Composición de {cat_filter}"),
-                    use_container_width=True,
-                )
-                st.plotly_chart(
-                    px.bar(
-                        df.groupby(cat_filter)[target_filter].mean().reset_index(),
-                        x=cat_filter,
-                        y=target_filter,
-                        title=f"Promedio de {target_filter} por {cat_filter}",
-                    ),
-                    use_container_width=True,
-                )
-        if len(numeric_cols) >= 2:
-            st.plotly_chart(
-                px.scatter(
-                    df,
-                    x=numeric_cols[0],
-                    y=numeric_cols[1],
-                    color=df[cat_filter].astype(str) if cat_cols else None,
-                    title="Dispersión exploratoria",
-                ),
-                use_container_width=True,
-            )
+        st.write(
+            "Revisa las visualizaciones construidas en el EDA para este proceso y redacta un hallazgo estadístico."
+        )
+        image_prefix = (
+            "german_credit"
+            if bundle.exercise == ExerciseOption.CREDIT_APPROVAL
+            else "default_clients"
+        )
+        eda_dir = Path(__file__).resolve().parents[1] / "assets" / "eda"
+        image_paths = sorted(eda_dir.glob(f"{image_prefix}_*.png"))
+        if not image_paths:
+            st.warning("No se encontraron gráficos EDA para este ejercicio.")
+        else:
+            for index in range(0, len(image_paths), 2):
+                cols = st.columns(2)
+                for column, image_path in zip(cols, image_paths[index : index + 2]):
+                    with column:
+                        st.image(str(image_path), use_container_width=True)
         progress = self._exercise_progress(record, bundle.exercise)
         with st.form("analytics_comment_form"):
             comment = st.text_area(

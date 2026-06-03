@@ -14,12 +14,44 @@ def inject_global_styles() -> None:
                 linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
         }
         .bankify-hero {
-            background: linear-gradient(120deg, #0f172a 0%, #155eef 58%, #38bdf8 100%);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(120deg, #08245c 0%, #1267cf 58%, #3a7cf0 100%);
             color: #ffffff;
-            padding: 2.4rem;
-            border-radius: 24px;
-            box-shadow: 0 20px 55px rgba(15, 23, 42, 0.18);
-            margin-bottom: 1.1rem;
+            padding: 2.25rem 2.55rem;
+            border-radius: 18px;
+            box-shadow: 0 22px 55px rgba(15, 23, 42, 0.18);
+            margin: 0 auto 1.35rem;
+            max-width: 1080px;
+        }
+        .bankify-hero::after {
+            content: "";
+            position: absolute;
+            width: 360px;
+            height: 360px;
+            right: 8%;
+            top: -82px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.14);
+        }
+        .bankify-hero h1,
+        .bankify-hero p,
+        .bankify-hero div {
+            position: relative;
+            z-index: 1;
+        }
+        .bankify-hero h1 {
+            margin: 0 0 1rem;
+            font-size: 2.55rem;
+            line-height: 1.05;
+            letter-spacing: 0;
+        }
+        .bankify-hero p {
+            max-width: 760px;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 1rem;
+            line-height: 1.65;
+            margin-bottom: 1.5rem;
         }
         .bankify-card {
             background: rgba(255, 255, 255, 0.88);
@@ -31,14 +63,289 @@ def inject_global_styles() -> None:
         }
         .bankify-pill {
             display: inline-block;
-            background: rgba(21, 94, 239, 0.1);
-            color: #0f172a;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.28);
             border-radius: 999px;
-            padding: 0.25rem 0.75rem;
+            padding: 0.35rem 0.85rem;
             margin-right: 0.45rem;
             margin-bottom: 0.45rem;
-            font-size: 0.82rem;
+            font-size: 0.76rem;
             font-weight: 600;
+        }
+        .bankify-access-heading {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-bottom: 0;
+            border-radius: 18px 18px 0 0;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+            margin-top: 0.25rem;
+            padding: 2.2rem 2.4rem 0.65rem;
+            text-align: center;
+        }
+        .bankify-access-heading h2 {
+            color: #08245c;
+            font-size: 1.35rem;
+            margin: 0 0 0.55rem;
+            letter-spacing: 0;
+        }
+        .bankify-access-heading p {
+            color: #4b5563;
+            margin: 0;
+        }
+        div[data-testid="stForm"]:has(input[aria-label="Nombre"]) {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-top: 0;
+            border-radius: 0 0 18px 18px;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+            padding: 0.75rem 2.4rem 2.2rem;
+        }
+        div[data-testid="stForm"]:has(input[aria-label="Nombre"]) label {
+            color: #6b7280;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        div[data-testid="stForm"]:has(input[aria-label="Nombre"]) input {
+            min-height: 3.25rem;
+            border-radius: 10px;
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #111827;
+        }
+        div[data-testid="stForm"]:has(input[aria-label="Nombre"]) button {
+            min-height: 3.15rem;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+        .bankify-profile-hero {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, #061b52 0%, #082760 52%, #0b3a81 100%);
+            border-radius: 8px;
+            color: #ffffff;
+            margin: 0.35rem 0 1.5rem;
+            padding: 1.55rem 1.7rem;
+            min-height: 150px;
+        }
+        .bankify-profile-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0 0 0 auto;
+            width: 46%;
+            background:
+                linear-gradient(90deg, rgba(6, 27, 82, 0.2), rgba(7, 38, 96, 0.88)),
+                repeating-linear-gradient(90deg, transparent 0 14px, rgba(96, 165, 250, 0.18) 14px 15px);
+            opacity: 0.72;
+        }
+        .bankify-profile-hero > div {
+            position: relative;
+            z-index: 1;
+            max-width: 680px;
+        }
+        .bankify-profile-kicker {
+            font-weight: 700;
+            margin: 0 0 0.75rem;
+        }
+        .bankify-code-pill {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            font-weight: 800;
+            padding: 0.42rem 0.78rem;
+        }
+        .bankify-profile-copy {
+            color: rgba(191, 219, 254, 0.92);
+            line-height: 1.5;
+            margin: 1rem 0 0;
+        }
+        .bankify-history-link {
+            color: #0057c8;
+            font-weight: 700;
+            margin: 0;
+            text-align: right;
+        }
+        .bankify-process-card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            min-height: 182px;
+            padding: 1.3rem 1.35rem;
+            margin-bottom: 0.75rem;
+        }
+        .bankify-process-top,
+        .bankify-progress-row {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .bankify-process-icon {
+            align-items: center;
+            background: #eaf4ff;
+            border-radius: 8px;
+            color: #006bd6;
+            display: inline-flex;
+            font-size: 1.25rem;
+            font-weight: 800;
+            height: 2.35rem;
+            justify-content: center;
+            width: 2.35rem;
+        }
+        .bankify-process-status {
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.28rem 0.65rem;
+        }
+        .bankify-process-status.progress {
+            background: #eaf4ff;
+            color: #006bd6;
+        }
+        .bankify-process-status.new {
+            background: #eef0f3;
+            color: #6b7280;
+        }
+        .bankify-process-card h3 {
+            color: #334155;
+            font-size: 0.98rem;
+            letter-spacing: 0;
+            margin: 1.45rem 0 1.1rem;
+        }
+        .bankify-progress-row {
+            color: #6b7280;
+            font-size: 0.88rem;
+            font-weight: 800;
+            margin-bottom: 0.55rem;
+        }
+        .bankify-progress-row strong {
+            color: #374151;
+        }
+        .bankify-progress-track {
+            background: #edf0f4;
+            border-radius: 999px;
+            height: 0.45rem;
+            overflow: hidden;
+        }
+        .bankify-progress-track span {
+            background: #006bd6;
+            border-radius: inherit;
+            display: block;
+            height: 100%;
+            min-width: 0.35rem;
+        }
+        .bankify-data-hero {
+            align-items: center;
+            background: linear-gradient(90deg, #12377f 0%, #17377d 72%, #102f73 100%);
+            border-radius: 8px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem auto 1.6rem;
+            max-width: 1180px;
+            min-height: 190px;
+            padding: 2rem 2.4rem;
+        }
+        .bankify-data-hero h1 {
+            color: #c7dcff;
+            font-size: 1.55rem;
+            letter-spacing: 0;
+            margin: 0 0 0.75rem;
+        }
+        .bankify-data-hero p {
+            color: rgba(219, 234, 254, 0.68);
+            line-height: 1.45;
+            margin: 0.85rem 0 0;
+            max-width: 760px;
+        }
+        .bankify-filter-pill {
+            background: rgba(0, 107, 214, 0.35);
+            border-radius: 4px;
+            color: #60a5fa;
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            padding: 0.3rem 0.65rem;
+            text-transform: uppercase;
+        }
+        .bankify-book-icon {
+            color: rgba(0, 107, 214, 0.7);
+            font-size: 4rem;
+            font-weight: 800;
+        }
+        .bankify-dictionary-card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 8px;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+            margin: 0 auto 1.6rem;
+            max-width: 1180px;
+            overflow: hidden;
+        }
+        .bankify-dictionary-card header {
+            align-items: center;
+            background: #e5e7eb;
+            display: flex;
+            gap: 0.85rem;
+            padding: 1.2rem 1.45rem;
+        }
+        .bankify-dictionary-card h2 {
+            color: #001a4d;
+            font-size: 1.35rem;
+            letter-spacing: 0;
+            margin: 0;
+        }
+        .bankify-section-icon {
+            color: #006bd6;
+            font-size: 1.2rem;
+        }
+        .bankify-dictionary-grid {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) minmax(260px, 2.5fr) minmax(110px, 0.8fr);
+            width: 100%;
+        }
+        .bankify-dictionary-head {
+            color: #4b5563;
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            padding: 1rem 1.2rem;
+            text-align: left;
+            text-transform: uppercase;
+        }
+        .bankify-dictionary-row {
+            display: contents;
+        }
+        .bankify-dictionary-row > div {
+            border-top: 1px solid #edf0f4;
+            color: #4b5563;
+            padding: 1rem 1.2rem;
+        }
+        .bankify-var-name {
+            color: #001a4d !important;
+            font-weight: 800;
+        }
+        .bankify-type-badge {
+            background: #dbe5ff;
+            border-radius: 4px;
+            color: #1e3a8a;
+            display: inline-block;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.28rem 0.55rem;
+        }
+        .bankify-eda-gallery {
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
         }
         .step-chip {
             display: inline-block;

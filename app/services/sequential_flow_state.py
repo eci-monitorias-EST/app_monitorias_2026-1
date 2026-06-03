@@ -79,64 +79,45 @@ class SequentialFlowStateMachine:
 def build_sequential_flow_state_machine() -> SequentialFlowStateMachine:
     return SequentialFlowStateMachine(
         steps=(
-            FlowStep(1, "Bienvenida", "_render_welcome", _allow_anything),
-            FlowStep(2, "Recolección de datos", "_render_data_collection", _require_record),
-            FlowStep(
-                3,
-                "Elección del ejercicio",
-                "_render_exercise_choice",
-                _require_selected_exercise,
-            ),
-            FlowStep(
-                4,
-                "Conozcamos a nuestros clientes",
-                "_render_dataset_view",
-                _require_dataset_comment,
-            ),
-            FlowStep(
-                5,
-                "Exploración y dashboard",
-                "_render_dashboard",
-                _require_analytics_comment,
-            ),
-            FlowStep(
-                6,
-                "Predicción explicable",
-                "_render_prediction",
-                _require_prediction_reflection,
-            ),
-            FlowStep(7, "Comentarios 3D", "_render_comments_projection", _require_record),
-            FlowStep(8, "Retroalimentación final", "_render_final_feedback", _deny_advance),
+            FlowStep(1, "Bienvenida", "_render_welcome", _require_record),
+            FlowStep(2, "Perfil de usuario", "_render_data_collection", _require_record),
+            FlowStep(3, "Informaci\u00f3n de los datos", "_render_dataset_view", _require_dataset_comment),
+            FlowStep(4, "Exploraci\u00f3n y dashboard", "_render_dashboard", _require_analytics_comment),
+            FlowStep(5, "Predicci\u00f3n explicable", "_render_prediction", _require_prediction_reflection),
+            FlowStep(6, "Comentarios 3D", "_render_comments_projection", _require_record),
+            FlowStep(7, "Retroalimentacion final", "_render_final_feedback", _deny_advance),
         )
     )
 
 
-def derive_exercise_flow_state(record: ParticipantRecord | None, has_meaningful_text: MeaningfulTextChecker) -> ExerciseFlowState:
+def derive_exercise_flow_state(
+    record: ParticipantRecord | None,
+    has_meaningful_text: MeaningfulTextChecker,
+) -> ExerciseFlowState:
     max_unlocked_step = derive_max_unlocked_step(record, has_meaningful_text)
-    current_step = min(max_unlocked_step, 4 if max_unlocked_step >= 4 else max_unlocked_step)
+    current_step = min(max_unlocked_step, 2 if max_unlocked_step >= 2 else max_unlocked_step)
     return ExerciseFlowState(current_step=current_step, max_unlocked_step=max_unlocked_step)
 
 
-def derive_max_unlocked_step(record: ParticipantRecord | None, has_meaningful_text: MeaningfulTextChecker) -> int:
+def derive_max_unlocked_step(
+    record: ParticipantRecord | None,
+    has_meaningful_text: MeaningfulTextChecker,
+) -> int:
     if record is None:
-        return 2
+        return 1
     if not record.selected_exercise:
-        return 3
+        return 2
 
     progress = record.exercise_progress.get(record.selected_exercise)
     if progress is None:
-        return 4
+        return 3
     if not has_meaningful_text(progress.dataset_comment):
-        return 4
+        return 3
     if not has_meaningful_text(progress.analytics_comment):
-        return 5
+        return 4
     if not progress.prediction_output or not has_meaningful_text(progress.prediction_reflection):
-        return 6
-    return 8
-
-
-def _allow_anything(_: FlowContext) -> bool:
-    return True
+        return 5
+    return 7
 
 
 def _deny_advance(_: FlowContext) -> bool:

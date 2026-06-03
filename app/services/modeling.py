@@ -20,10 +20,10 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 GERMAN_VARIABLES = [
     VariableDescriptor("status_checking_account", "Cuenta corriente", "Estado de la cuenta corriente del solicitante.", "categorical", "UCI Statlog German Credit Data", "Status of existing checking account"),
-    VariableDescriptor("duration_month", "Duración del crédito", "Duración del crédito en meses.", "numeric", "UCI Statlog German Credit Data", "Duration in month"),
+    VariableDescriptor("duration_month", "Duración del crédito", "Número de meses pactados para pagar el crédito solicitado.", "numeric", "UCI Statlog German Credit Data", "Duration in month"),
     VariableDescriptor("credit_history", "Historial crediticio", "Comportamiento crediticio previo del solicitante.", "categorical", "UCI Statlog German Credit Data", "Credit history"),
     VariableDescriptor("purpose", "Propósito del crédito", "Uso principal del crédito solicitado.", "categorical", "UCI Statlog German Credit Data", "Purpose"),
-    VariableDescriptor("credit_amount", "Monto del crédito", "Monto solicitado por el cliente.", "numeric", "UCI Statlog German Credit Data", "Credit amount"),
+    VariableDescriptor("credit_amount", "Monto del crédito", "Valor total del crédito solicitado por el cliente.", "numeric", "UCI Statlog German Credit Data", "Credit amount"),
     VariableDescriptor("savings_account", "Ahorros / bonos", "Nivel de ahorro o bonos declarados.", "categorical", "UCI Statlog German Credit Data", "Savings account/bonds"),
     VariableDescriptor("employment_since", "Antigüedad laboral", "Tiempo de empleo en la posición actual.", "categorical", "UCI Statlog German Credit Data", "Present employment since"),
     VariableDescriptor("installment_rate", "Tasa de cuota", "Cuota como porcentaje del ingreso disponible.", "numeric", "UCI Statlog German Credit Data", "Installment rate in percentage of disposable income"),
@@ -42,10 +42,10 @@ GERMAN_VARIABLES = [
 ]
 
 DEFAULT_VARIABLES = [
-    VariableDescriptor("LIMIT_BAL", "Cupo de crédito", "Monto del crédito otorgado.", "numeric", "Default Clients"),
+    VariableDescriptor("LIMIT_BAL", "Cupo de crédito", "Monto máximo de crédito asignado al cliente.", "numeric", "Default Clients"),
     VariableDescriptor("SEX", "Sexo", "Sexo codificado del cliente.", "categorical", "Default Clients"),
-    VariableDescriptor("EDUCATION", "Educación", "Nivel educativo codificado.", "categorical", "Default Clients"),
-    VariableDescriptor("MARRIAGE", "Estado civil", "Estado civil codificado.", "categorical", "Default Clients"),
+    VariableDescriptor("EDUCATION", "Nivel educativo", "Nivel de educación reportado para el cliente.", "categorical", "Default Clients"),
+    VariableDescriptor("MARRIAGE", "Estado civil", "Situación familiar o estado civil del cliente.", "categorical", "Default Clients"),
     VariableDescriptor("AGE", "Edad", "Edad del cliente.", "numeric", "Default Clients"),
     VariableDescriptor("PAY_0", "Mora reciente", "Estado de pago en el último periodo.", "numeric", "Default Clients"),
     VariableDescriptor("PAY_2", "Mora t-2", "Estado de pago dos periodos atrás.", "numeric", "Default Clients"),
