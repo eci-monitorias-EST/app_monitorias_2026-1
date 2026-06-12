@@ -512,9 +512,9 @@ class SequentialLearningFlow:
             return
         render_eda_dashboard(bundle)
         progress = self._exercise_progress(record, bundle.exercise)
-        st.markdown("### 📝 Tu hallazgo estadístico")
+        st.markdown("### Tu hallazgo estadístico")
         st.caption(
-            "Apóyate en las 3 preguntas guía del dashboard para redactar un hallazgo "
+            "Apóyate en las tres preguntas del cuaderno para redactar un hallazgo "
             "que vaya de lo macro (la tabla) a lo micro (las variables y el riesgo)."
         )
         with st.form("analytics_comment_form"):
