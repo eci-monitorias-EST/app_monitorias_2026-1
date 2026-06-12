@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from typing import Callable
 
 import pandas as pd
@@ -11,6 +10,7 @@ import streamlit as st
 
 from components.style import inject_global_styles
 from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
+from pages.eda_dashboard import render_eda_dashboard
 from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
@@ -510,26 +510,13 @@ class SequentialLearningFlow:
         bundle = self._current_bundle()
         if not record or bundle is None:
             return
-        st.title("Exploración y dashboard")
-        st.write(
-            "Revisa las visualizaciones construidas en el EDA para este proceso y redacta un hallazgo estadístico."
-        )
-        image_prefix = (
-            "german_credit"
-            if bundle.exercise == ExerciseOption.CREDIT_APPROVAL
-            else "default_clients"
-        )
-        eda_dir = Path(__file__).resolve().parents[1] / "assets" / "eda"
-        image_paths = sorted(eda_dir.glob(f"{image_prefix}_*.png"))
-        if not image_paths:
-            st.warning("No se encontraron gráficos EDA para este ejercicio.")
-        else:
-            for index in range(0, len(image_paths), 2):
-                cols = st.columns(2)
-                for column, image_path in zip(cols, image_paths[index : index + 2]):
-                    with column:
-                        st.image(str(image_path), use_container_width=True)
+        render_eda_dashboard(bundle)
         progress = self._exercise_progress(record, bundle.exercise)
+        st.markdown("### 📝 Tu hallazgo estadístico")
+        st.caption(
+            "Apóyate en las 3 preguntas guía del dashboard para redactar un hallazgo "
+            "que vaya de lo macro (la tabla) a lo micro (las variables y el riesgo)."
+        )
         with st.form("analytics_comment_form"):
             comment = st.text_area(
                 "¿Qué hallazgo relevante encontraste?",
