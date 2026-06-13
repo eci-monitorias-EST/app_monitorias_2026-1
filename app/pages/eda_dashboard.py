@@ -2,15 +2,18 @@
 
 Presenta los 14 gráficos del EDA tal como fueron construidos en los
 notebooks (6 de Aprobación de crédito y 8 de Probabilidad de mora,
-servidos desde ``app/assets/eda``), organizados como un cuaderno de
-analista que va de lo macro (la tabla completa) a lo micro (cada
-variable frente al riesgo). Solo presentación: recibe un
-``DatasetBundle`` ya cargado por los servicios y no persiste estado.
+servidos desde ``app/assets/eda``), organizados de lo macro (todo el
+conjunto) a lo micro (cada dato frente al resultado). El estudiante
+saca sus propias conclusiones: no hay textos interpretativos sobre los
+gráficos. Cada capítulo tiene una cajita donde el estudiante escribe y
+guarda su respuesta.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import Callable
 
 import streamlit as st
 
@@ -21,223 +24,185 @@ ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets" / "eda"
 
 TOTAL_FIGURES_APP = 14
 
-# ---------------------------------------------------------------------------
-# Inventario de figuras por ejercicio: (archivo, capítulo, título, nota al pie)
-# Las notas están escritas en primera persona, como apuntes de quien hizo el EDA.
-# ---------------------------------------------------------------------------
+# Glosarios para leer los nombres que vienen impresos dentro de los mapas de
+# calor. Las figuras son imágenes fijas, así que no se reconstruyen: el glosario
+# solo traduce las siglas para que la audiencia juvenil pueda leer los ejes.
+GERMAN_HEATMAP_GLOSSARY = {
+    "duration_months": "plazo del crédito",
+    "credit_amount": "monto del crédito",
+    "installment_rate": "tamaño de la cuota",
+    "present_residence": "años en la vivienda",
+    "age_years": "edad",
+    "existing_credits": "créditos que ya tiene",
+    "liable_people": "personas a cargo",
+    "target": "resultado del crédito",
+}
+
+DEFAULT_HEATMAP_GLOSSARY = {
+    "LIMIT_BAL": "cupo de crédito",
+    "AGE": "edad",
+    "BILL_AMT1…6": "lo que debía cada mes",
+    "PAY_AMT1…6": "lo que pagó cada mes",
+    "Default": "resultado (pagó / no pagó)",
+}
+
+# Inventario de figuras por ejercicio. Cada figura: archivo, capítulo (1=macro,
+# 2=variables, 3=micro), título amigable y un glosario opcional (solo para los
+# mapas de calor). No se incluyen notas ni conclusiones: las saca el estudiante.
 GERMAN_FIGURES = [
-    (
-        "german_credit_01.png",
-        1,
-        "Distribución de la variable objetivo",
-        "700 créditos buenos contra 300 malos. Ese 30% de riesgo no es poca cosa "
-        "para un banco; y como los malos son minoría, toca leer el resto del "
-        "cuaderno con ese desbalance en la cabeza.",
-    ),
-    (
-        "german_credit_02.png",
-        2,
-        "Histogramas de las variables numéricas",
-        "Casi todo el mundo pide créditos cortos y pequeños: monto y duración se "
-        "amontonan a la izquierda y dejan colas largas. Esas colas son las que "
-        "después dan sustos.",
-    ),
-    (
-        "german_credit_03.png",
-        2,
-        "Cajas y valores atípicos",
-        "Los puntos sueltos por encima de los bigotes son las solicitudes raras: "
-        "créditos de más de 60 meses, montos de cinco cifras y clientes de 70 "
-        "años. Pocas, pero existen.",
-    ),
-    (
-        "german_credit_04.png",
-        2,
-        "Frecuencia de las categóricas clave",
-        "El perfil que domina sorprende: sin cuenta corriente (A14), con créditos "
-        "al día (A32), ahorro mínimo (A61), hombre soltero (A93) y vivienda "
-        "propia (A152). El diccionario del paso anterior ayuda a traducir los códigos.",
-    ),
-    (
-        "german_credit_05.png",
-        3,
-        "Duración y monto según el resultado del crédito",
-        "Aquí está la pista fuerte del capítulo: los créditos que salieron malos "
-        "(grupo 2) eran más largos y más grandes desde el día uno. La mediana de "
-        "duración del grupo malo queda claramente por encima.",
-    ),
-    (
-        "german_credit_06.png",
-        3,
-        "Matriz de correlación",
-        "Duración y monto van pegados (0.62), así que cuentan casi la misma "
-        "historia. Contra el target nada pasa de 0.21: el riesgo no se explica "
-        "con una sola variable, hay que cruzarlas.",
-    ),
+    {"file": "german_credit_01.png", "chapter": 1,
+     "title": "¿Cuántos créditos resultaron buenos y cuántos malos?"},
+    {"file": "german_credit_02.png", "chapter": 2,
+     "title": "¿Cómo se reparten los montos, plazos y edades?"},
+    {"file": "german_credit_03.png", "chapter": 2,
+     "title": "Identificación de valores atípicos"},
+    {"file": "german_credit_04.png", "chapter": 2,
+     "title": "Las características más comunes de los solicitantes"},
+    {"file": "german_credit_05.png", "chapter": 3,
+     "title": "Plazo y monto: ¿se diferencian los créditos buenos de los malos?"},
+    {"file": "german_credit_06.png", "chapter": 3,
+     "title": "Identificación de relaciones entre variables",
+     "glossary": GERMAN_HEATMAP_GLOSSARY},
 ]
 
 DEFAULT_FIGURES = [
-    (
-        "default_clients_01.png",
-        1,
-        "Clientes por estado de impago",
-        "23.364 al día contra 6.636 en mora: 22,1%. Uno de cada cinco. Cualquier "
-        "modelo que prediga siempre «al día» acierta el 78% de las veces sin "
-        "aprender nada; ojo con eso al evaluar.",
-    ),
-    (
-        "default_clients_02.png",
-        2,
-        "Distribución del límite de crédito",
-        "El sesgo a la derecha es de manual: la mayoría de los cupos vive por "
-        "debajo de NT$ 200.000 y una cola larga concentra los cupos grandes. La "
-        "media queda inflada por esa cola.",
-    ),
-    (
-        "default_clients_03.png",
-        3,
-        "Límite de crédito según estado de impago",
-        "Quien cayó en mora tenía, de entrada, cupos más bajos: la caja del grupo "
-        "1 está corrida hacia abajo. El banco ya los percibía como riesgosos "
-        "antes de que dejaran de pagar.",
-    ),
-    (
-        "default_clients_04.png",
-        3,
-        "Proporción de impagos por edad",
-        "La tasa de mora ronda el 20–25% en casi todas las edades; no crece en "
-        "línea recta. Los extremos (muy jóvenes y mayores de 60) son los que se "
-        "salen del promedio.",
-    ),
-    (
-        "default_clients_05.png",
-        3,
-        "Cupo promedio según edad y comportamiento real",
-        "En cada rango de edad los cumplidos tenían más cupo que los morosos... "
-        "hasta los 70–79, donde la brecha desaparece y el cupo deja de "
-        "diferenciar el riesgo.",
-    ),
-    (
-        "default_clients_06.png",
-        3,
-        "Matriz de covarianzas",
-        "Está dominada por la escala de las facturas (BILL_AMT): números enormes "
-        "entre meses consecutivos. La covarianza cruda engaña cuando las "
-        "unidades son tan distintas; por eso la siguiente figura usa Spearman.",
-    ),
-    (
-        "default_clients_07.png",
-        3,
-        "Correlación de Spearman",
-        "Las facturas se copian de un mes a otro (ρ > 0.8): son casi redundantes. "
-        "Frente al default lo que pesa va en negativo: a mayor cupo y mayores "
-        "pagos, menos mora (−0.17 y −0.16).",
-    ),
-    (
-        "default_clients_08.png",
-        3,
-        "Pairplot: variables clave vs. estado de impago",
-        "No hay frontera limpia entre verdes y naranjas en ningún cruce: la mora "
-        "no se separa con dos variables. El riesgo es multivariado, y eso "
-        "justifica pasar a un modelo.",
-    ),
+    {"file": "default_clients_01.png", "chapter": 1,
+     "title": "¿Cuántos clientes pagaron y cuántos no?"},
+    {"file": "default_clients_02.png", "chapter": 2,
+     "title": "¿Cómo se reparten los cupos de crédito?"},
+    {"file": "default_clients_03.png", "chapter": 3,
+     "title": "El cupo de crédito frente al pago"},
+    {"file": "default_clients_04.png", "chapter": 3,
+     "title": "¿Influye la edad en no pagar?"},
+    {"file": "default_clients_05.png", "chapter": 3,
+     "title": "Cupo promedio según la edad y si pagaron"},
+    {"file": "default_clients_06.png", "chapter": 3,
+     "title": "Cómo se mueven juntas las variables",
+     "glossary": DEFAULT_HEATMAP_GLOSSARY},
+    {"file": "default_clients_07.png", "chapter": 3,
+     "title": "Identificación de relaciones entre variables",
+     "glossary": DEFAULT_HEATMAP_GLOSSARY},
+    {"file": "default_clients_08.png", "chapter": 3,
+     "title": "Mirando varias variables a la vez"},
 ]
 
 CHAPTERS = {
-    1: (
-        "La tabla completa",
-        "Antes de mirar variables una a una: cuántos registros hay, qué los "
-        "describe y cómo se reparte la variable objetivo. Aquí vive la pregunta 1.",
-    ),
-    2: (
-        "Variable por variable",
-        "Distribuciones, atípicos y categorías dominantes. El microscopio sobre "
-        "cada columna de la tabla. Aquí vive la pregunta 2.",
-    ),
-    3: (
-        "Frente al riesgo",
-        "Los cruces contra el resultado real y las relaciones entre variables. "
-        "El terreno de la pregunta 3.",
-    ),
+    1: "El panorama general",
+    2: "Cada dato por separado",
+    3: "Buscando relaciones",
 }
 
+# Prompts de las cajitas de respuesta (uno por capítulo). Hacen eco de las
+# preguntas P1/P2/P3, en lenguaje cercano a la audiencia juvenil.
+SECTION_PROMPTS = {
+    1: "Con todo el panorama a la vista, ¿qué es lo primero que te llama la "
+    "atención del conjunto de datos?",
+    2: "Al mirar los datos uno por uno, ¿cuáles te parecen los más interesantes "
+    "o los más raros, y por qué?",
+    3: "Al cruzar los datos con el resultado, ¿qué relaciones crees que ayudan a "
+    "explicar quién es más riesgoso?",
+}
+
+_SECTION_LABELS = {1: "Panorama general", 2: "Cada dato", 3: "Relaciones"}
+_SECTION_MARK_RE = re.compile(r"【P([123])·[^】]*】\n?")
+
+
+def combine_sections(values: dict[int, str]) -> str:
+    """Une las tres respuestas en un solo texto persistible (analytics_comment)."""
+    parts: list[str] = []
+    for number in (1, 2, 3):
+        text = (values.get(number) or "").strip()
+        if text:
+            parts.append(f"【P{number}·{_SECTION_LABELS[number]}】\n{text}")
+    return "\n\n".join(parts)
+
+
+def split_sections(combined: str) -> dict[int, str]:
+    """Separa el texto combinado en las tres respuestas por capítulo."""
+    result = {1: "", 2: "", 3: ""}
+    if not combined:
+        return result
+    matches = list(_SECTION_MARK_RE.finditer(combined))
+    if not matches:
+        # Texto heredado sin marcadores: lo dejamos en la primera cajita.
+        result[1] = combined.strip()
+        return result
+    for index, match in enumerate(matches):
+        number = int(match.group(1))
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(combined)
+        result[number] = combined[start:end].strip()
+    return result
+
 
 # ---------------------------------------------------------------------------
-# Estilos del cuaderno (solo este módulo)
+# Estilos (solo este módulo)
 # ---------------------------------------------------------------------------
-_NOTEBOOK_CSS = """
+_DASHBOARD_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Caveat:wght@500;600&display=swap');
 
-.nb-masthead {
+.eda-hero {
     position: relative;
-    background: #fffdf7;
-    border: 1px solid #e2ddd0;
-    border-top: 6px double #0f2c6b;
-    border-radius: 3px;
-    box-shadow: 0 14px 34px rgba(15, 44, 107, 0.10);
-    margin: 0.4rem 0 1.6rem;
-    padding: 1.7rem 2.1rem 1.5rem;
+    overflow: hidden;
+    background: linear-gradient(115deg, #061b52 0%, #0d3a8f 55%, #155eef 100%);
+    border-radius: 14px;
+    color: #ffffff;
+    margin: 0.4rem 0 1.4rem;
+    padding: 1.9rem 2.2rem 1.7rem;
+    box-shadow: 0 18px 44px rgba(8, 36, 92, 0.22);
 }
-.nb-kicker {
-    color: #8a8474;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    margin: 0 0 0.55rem;
-    text-transform: uppercase;
-}
-.nb-masthead h1 {
-    color: #101828;
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 2.15rem;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 1.08;
-    margin: 0 0 0.55rem;
-    max-width: 78%;
-}
-.nb-masthead h1 em {
-    color: #0f2c6b;
-    font-style: italic;
-}
-.nb-standfirst {
-    color: #4b5563;
-    font-size: 0.98rem;
-    line-height: 1.6;
-    margin: 0 0 1rem;
-    max-width: 70%;
-}
-.nb-stamp {
+.eda-hero::after {
+    content: "";
     position: absolute;
-    top: 1.6rem;
-    right: 1.8rem;
-    transform: rotate(5deg);
-    border: 2.5px solid #b3402f;
-    border-radius: 6px;
-    color: #b3402f;
+    inset: 0 0 0 auto;
+    width: 42%;
+    background:
+        radial-gradient(circle at 78% 22%, rgba(96, 165, 250, 0.35), transparent 55%),
+        repeating-linear-gradient(115deg, transparent 0 16px, rgba(96, 165, 250, 0.12) 16px 17px);
+}
+.eda-hero > * { position: relative; z-index: 1; }
+.eda-hero-kicker {
+    color: #93c5fd;
     font-size: 0.72rem;
     font-weight: 800;
-    letter-spacing: 0.14em;
-    line-height: 1.35;
-    opacity: 0.82;
-    padding: 0.45rem 0.7rem;
-    text-align: center;
+    letter-spacing: 0.18em;
+    margin: 0 0 0.5rem;
     text-transform: uppercase;
 }
-.nb-ficha {
-    border-top: 1px dashed #d6d0bf;
-    color: #6b7280;
-    font-size: 0.85rem;
-    padding-top: 0.75rem;
+.eda-hero h1 {
+    color: #ffffff;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.12;
+    margin: 0 0 0.6rem;
+    max-width: 82%;
 }
-.nb-ficha strong { color: #101828; }
+.eda-hero p {
+    color: rgba(219, 234, 254, 0.92);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 1.05rem;
+    max-width: 72%;
+}
+.eda-hero-pill {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 999px;
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0 0.4rem 0.35rem 0;
+    padding: 0.34rem 0.85rem;
+}
 
 .nb-notas {
     display: grid;
     gap: 1rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0.2rem 0 0.4rem;
+    margin: 0.2rem 0 1.1rem;
 }
 @media (max-width: 1100px) { .nb-notas { grid-template-columns: 1fr; } }
 .nb-nota {
@@ -291,13 +256,6 @@ _NOTEBOOK_CSS = """
     font-size: 1.12rem;
     line-height: 1.2;
 }
-.nb-notas-pie {
-    color: #8a8474;
-    font-size: 0.8rem;
-    font-style: italic;
-    margin: 0.7rem 0 0.3rem;
-    text-align: right;
-}
 
 .nb-capitulo {
     align-items: baseline;
@@ -305,7 +263,7 @@ _NOTEBOOK_CSS = """
     display: flex;
     gap: 1.05rem;
     margin: 0.8rem 0 1.2rem;
-    padding-bottom: 0.85rem;
+    padding-bottom: 0.7rem;
 }
 .nb-cap-num {
     color: rgba(15, 44, 107, 0.22);
@@ -320,42 +278,8 @@ _NOTEBOOK_CSS = """
     font-size: 1.32rem;
     font-weight: 700;
     letter-spacing: 0;
-    margin: 0 0 0.25rem;
-}
-.nb-capitulo p {
-    color: #6b7280;
-    font-size: 0.9rem;
-    line-height: 1.5;
     margin: 0;
-    max-width: 660px;
 }
-
-.nb-ficha-tecnica {
-    background: #fffdf7;
-    border: 1px solid #e2ddd0;
-    border-left: 4px solid #0f2c6b;
-    border-radius: 3px;
-    margin: 0 0 1.3rem;
-    padding: 0.9rem 1.25rem 0.95rem;
-}
-.nb-ficha-tecnica h4 {
-    color: #8a8474;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    margin: 0 0 0.55rem;
-    text-transform: uppercase;
-}
-.nb-ficha-fila {
-    border-bottom: 1px dotted #d6d0bf;
-    color: #4b5563;
-    display: flex;
-    font-size: 0.9rem;
-    justify-content: space-between;
-    padding: 0.32rem 0;
-}
-.nb-ficha-fila:last-child { border-bottom: 0; }
-.nb-ficha-fila strong { color: #101828; }
 
 .nb-fig-head {
     align-items: baseline;
@@ -376,37 +300,71 @@ _NOTEBOOK_CSS = """
 .nb-fig-head h4 {
     border-bottom: 2px solid rgba(15, 44, 107, 0.18);
     color: #101828;
-    font-size: 1.02rem;
+    font-size: 1.04rem;
     letter-spacing: 0;
     margin: 0;
     padding-bottom: 0.15rem;
 }
-.nb-fig-nota {
-    border-left: 3px solid rgba(179, 64, 47, 0.45);
-    color: #243b6b;
-    font-family: 'Caveat', cursive;
-    font-size: 1.28rem;
-    line-height: 1.3;
-    margin: 0.45rem 0 0.4rem 0.3rem;
-    max-width: 860px;
-    padding: 0.1rem 0 0.1rem 0.85rem;
-    transform: rotate(-0.25deg);
-}
 
-.nb-cierre {
-    border-top: 1px solid #e2ddd0;
-    color: #6b7280;
-    font-size: 0.9rem;
-    font-style: italic;
-    margin-top: 1.6rem;
-    padding-top: 0.9rem;
+.eda-glosa-tag {
+    color: #0f2c6b;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    margin: 0.6rem 0 0.35rem;
+    text-transform: uppercase;
+}
+.eda-glosa {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 0.3rem;
+}
+.eda-glosa-chip {
+    background: #eef2fb;
+    border: 1px solid #d6def0;
+    border-radius: 6px;
+    color: #23324f;
+    font-size: 0.8rem;
+    padding: 0.28rem 0.62rem;
+}
+.eda-glosa-chip b { color: #0f2c6b; }
+
+.eda-cajon {
+    margin: 1.6rem 0 0.4rem;
+}
+.eda-cajon-tag {
+    background: #0f2c6b;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    padding: 0.26rem 0.72rem;
+    text-transform: uppercase;
+}
+.eda-cajon p {
+    color: #101828;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.1rem;
+    line-height: 1.4;
+    margin: 0.6rem 0 0.5rem;
+    max-width: 760px;
+}
+div[data-testid="stForm"]:has(textarea[aria-label="Tu respuesta del capítulo"]) {
+    background: #fffdf7;
+    border: 1px solid #e2ddd0;
+    border-left: 4px solid #0f2c6b;
+    border-radius: 4px;
+    box-shadow: 0 8px 20px rgba(15, 44, 107, 0.07);
+    padding: 1rem 1.2rem 1.1rem;
 }
 </style>
 """
 
 
-def _inject_notebook_styles() -> None:
-    st.markdown(_NOTEBOOK_CSS, unsafe_allow_html=True)
+def _inject_dashboard_styles() -> None:
+    st.markdown(_DASHBOARD_CSS, unsafe_allow_html=True)
 
 
 def _html(markup: str) -> None:
@@ -420,31 +378,23 @@ def _html(markup: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Piezas del cuaderno
+# Piezas del dashboard
 # ---------------------------------------------------------------------------
-def _render_masthead(bundle: DatasetBundle, figures_count: int, risk_rate: float) -> None:
-    df = bundle.df
-    risk_phrase = (
-        f"{risk_rate:.0%} terminó mal"
-        if bundle.exercise == ExerciseOption.CREDIT_APPROVAL
-        else f"{risk_rate:.1%} cayó en mora"
-    )
+def _render_hero(bundle: DatasetBundle, figures_count: int) -> None:
     _html(
         f"""
-        <section class="nb-masthead">
-            <p class="nb-kicker">Bankify · Ingeniería Estadística · Cuaderno de exploración</p>
-            <h1>Lo que cuentan los datos de <em>{bundle.label.lower()}</em></h1>
-            <p class="nb-standfirst">
-                Un recorrido en tres capítulos, de lo macro a lo micro: primero la tabla
-                completa, después cada variable bajo el microscopio y al final su cara a
-                cara con el riesgo. Tres preguntas guían la lectura de todas las figuras.
+        <section class="eda-hero">
+            <p class="eda-hero-kicker">Bankify · Explora los datos</p>
+            <h1>¿Qué nos dicen los datos de {bundle.label.lower()}?</h1>
+            <p>
+                Un recorrido de lo general a lo específico: primero ves toda la
+                información junta, luego cada dato por separado y al final cómo se
+                conecta con el resultado. Las conclusiones las sacas tú.
             </p>
-            <span class="nb-stamp">De lo macro<br>a lo micro</span>
-            <div class="nb-ficha">
-                <strong>{len(df):,}</strong> registros reales &nbsp;·&nbsp;
-                <strong>{len(bundle.features)}</strong> variables &nbsp;·&nbsp;
-                <strong>{risk_phrase}</strong> &nbsp;·&nbsp;
-                {figures_count} figuras en este proceso ({TOTAL_FIGURES_APP} en todo el cuaderno)
+            <div>
+                <span class="eda-hero-pill">{len(bundle.df):,} registros reales</span>
+                <span class="eda-hero-pill">{len(bundle.features)} datos por cliente</span>
+                <span class="eda-hero-pill">{figures_count} gráficos para explorar</span>
             </div>
         </section>
         """
@@ -486,59 +436,34 @@ def _render_guiding_questions(hints: tuple[str, str, str]) -> None:
         for index, (css, text, hint) in enumerate(notes, start=1)
     )
     _html(f"<div class='nb-notas'>{cards}</div>")
-    _html(
-        "<p class='nb-notas-pie'>Tres preguntas, catorce figuras: estas son las únicas "
-        "preguntas del cuaderno y cubren los dos procesos (6 figuras de aprobación de "
-        "crédito y 8 de probabilidad de mora).</p>"
-    )
 
 
 def _render_chapter(number: int) -> None:
-    title, copy = CHAPTERS[number]
     _html(
         f"""
         <div class="nb-capitulo">
             <span class="nb-cap-num">{number:02d}</span>
-            <div>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-            </div>
+            <h3>{CHAPTERS[number]}</h3>
         </div>
         """
     )
 
 
-def _render_data_sheet(bundle: DatasetBundle, risk_rate: float, risk_label: str) -> None:
-    features = bundle.df[bundle.features]
-    numeric_count = features.select_dtypes(include=["number"]).shape[1]
-    categorical_count = len(bundle.features) - numeric_count
-    missing = int(features.isna().sum().sum())
-    rows = [
-        ("Registros", f"{len(bundle.df):,}"),
-        ("Variables", f"{len(bundle.features)} ({numeric_count} numéricas · {categorical_count} categóricas)"),
-        ("Datos faltantes", f"{missing:,}"),
-        (risk_label, f"{risk_rate:.1%}"),
-    ]
-    body = "".join(
-        f"<div class='nb-ficha-fila'><span>{label}</span><strong>{value}</strong></div>"
-        for label, value in rows
+def _render_glossary(glossary: dict[str, str]) -> None:
+    chips = "".join(
+        f"<span class='eda-glosa-chip'><b>{code}</b> = {meaning}</span>"
+        for code, meaning in glossary.items()
     )
-    _html(
-        f"""
-        <div class="nb-ficha-tecnica">
-            <h4>Ficha técnica de la tabla</h4>
-            {body}
-        </div>
-        """
-    )
+    _html("<p class='eda-glosa-tag'>Qué significa cada nombre del gráfico</p>")
+    _html(f"<div class='eda-glosa'>{chips}</div>")
 
 
-def _render_figure(index: int, total: int, title: str, note: str, image_path: Path) -> None:
+def _render_figure(index: int, total: int, figure: dict, image_path: Path) -> None:
     _html(
         f"""
         <div class="nb-fig-head">
             <span class="nb-fig-num">Fig. {index:02d} / {total:02d}</span>
-            <h4>{title}</h4>
+            <h4>{figure["title"]}</h4>
         </div>
         """
     )
@@ -546,68 +471,77 @@ def _render_figure(index: int, total: int, title: str, note: str, image_path: Pa
         st.image(str(image_path), use_container_width=True)
     else:
         st.warning(f"No se encontró la figura {image_path.name} en app/assets/eda.")
-    _html(f"<p class='nb-fig-nota'>{note}</p>")
+    glossary = figure.get("glossary")
+    if glossary:
+        _render_glossary(glossary)
 
 
-def _render_table_preview(bundle: DatasetBundle) -> None:
-    with st.expander("La tabla en bruto: primeras filas y resumen de las numéricas"):
-        st.dataframe(bundle.df.head(10), use_container_width=True)
-        numeric = bundle.df.select_dtypes(include=["number"])
-        if not numeric.empty:
-            st.dataframe(numeric.describe().T.round(2), use_container_width=True)
+def _render_section_box(
+    exercise: str,
+    chapter_number: int,
+    value: str,
+    on_save: Callable[[int, str], bool],
+) -> None:
+    _html(
+        f"""
+        <div class="eda-cajon">
+            <span class="eda-cajon-tag">Tu turno · Pregunta {chapter_number}</span>
+            <p>{SECTION_PROMPTS[chapter_number]}</p>
+        </div>
+        """
+    )
+    with st.form(f"eda_section_{exercise}_{chapter_number}"):
+        text = st.text_area(
+            "Tu respuesta del capítulo",
+            value=value,
+            height=130,
+            label_visibility="collapsed",
+            placeholder="Escribe aquí lo que observas...",
+        )
+        submitted = st.form_submit_button("Guardar mi respuesta")
+    if submitted and on_save(chapter_number, text):
+        st.success("Respuesta guardada.")
 
 
 # ---------------------------------------------------------------------------
 # Punto de entrada
 # ---------------------------------------------------------------------------
-def render_eda_dashboard(bundle: DatasetBundle) -> None:
-    """Renderiza el cuaderno de exploración para el ejercicio activo."""
-    _inject_notebook_styles()
+def render_eda_dashboard(
+    bundle: DatasetBundle,
+    *,
+    section_values: dict[int, str],
+    on_save: Callable[[int, str], bool],
+) -> None:
+    """Renderiza el dashboard exploratorio para el ejercicio activo."""
+    _inject_dashboard_styles()
 
     if bundle.exercise == ExerciseOption.CREDIT_APPROVAL:
         figures = GERMAN_FIGURES
-        risk_rate = float((bundle.df["credit_outcome"] == 2).mean())
-        risk_label = "Créditos malos"
         hints = ("la figura 1", "las figuras 2 a 4", "las figuras 5 y 6")
     else:
         figures = DEFAULT_FIGURES
-        risk_rate = float((bundle.df["Default"] == 1).mean())
-        risk_label = "Tasa de impago"
         hints = ("la figura 1", "la figura 2", "las figuras 3 a 8")
 
     total = len(figures)
-    _render_masthead(bundle, total, risk_rate)
+    _render_hero(bundle, total)
     _render_guiding_questions(hints)
 
     chapter_tabs = st.tabs(
         [
-            "Capítulo 01 · La tabla",
-            "Capítulo 02 · Las variables",
-            "Capítulo 03 · Frente al riesgo",
+            "Capítulo 01 · Panorama general",
+            "Capítulo 02 · Cada dato",
+            "Capítulo 03 · Relaciones",
         ]
     )
     for chapter_number, tab in enumerate(chapter_tabs, start=1):
         with tab:
             _render_chapter(chapter_number)
-            if chapter_number == 1:
-                _render_data_sheet(bundle, risk_rate, risk_label)
-            chapter_figures = [
-                (index, title, note, filename)
-                for index, (filename, chapter, title, note) in enumerate(figures, start=1)
-                if chapter == chapter_number
-            ]
-            if not chapter_figures:
-                st.caption(
-                    "Este proceso no tiene figuras en este capítulo; su detalle "
-                    "está concentrado en los otros dos."
-                )
-            for index, title, note, filename in chapter_figures:
-                _render_figure(index, total, title, note, ASSETS_DIR / filename)
-            if chapter_number == 1:
-                _render_table_preview(bundle)
-            if chapter_number == 3:
-                _html(
-                    "<p class='nb-cierre'>Fin del recorrido. Si las tres preguntas ya "
-                    "tienen respuesta en tu cabeza, baja al cierre y escribe tu hallazgo: "
-                    "de la tabla completa al detalle, con tus propias palabras.</p>"
-                )
+            for index, figure in enumerate(figures, start=1):
+                if figure["chapter"] == chapter_number:
+                    _render_figure(index, total, figure, ASSETS_DIR / figure["file"])
+            _render_section_box(
+                bundle.exercise,
+                chapter_number,
+                section_values.get(chapter_number, ""),
+                on_save,
+            )

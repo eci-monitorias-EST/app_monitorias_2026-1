@@ -10,7 +10,7 @@ import streamlit as st
 
 from components.style import inject_global_styles
 from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
-from pages.eda_dashboard import render_eda_dashboard
+from pages.eda_dashboard import combine_sections, render_eda_dashboard, split_sections
 from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
@@ -505,34 +505,42 @@ class SequentialLearningFlow:
             ):
                 st.success("Comentario guardado sin duplicar el registro.")
 
+    def _save_dashboard_section(
+        self, participant_id: str, exercise: str, chapter: int, text: str
+    ) -> bool:
+        validation = self.validator.validate_learning_text(
+            text, field_label=f"respuesta de la pregunta {chapter}"
+        )
+        if not validation.is_valid:
+            st.warning(validation.message)
+            return False
+        record = self.container.sessions.get_record(participant_id)
+        progress = (
+            record.exercise_progress.get(exercise) if record else None
+        )
+        sections = split_sections(progress.analytics_comment if progress else "")
+        sections[chapter] = text.strip()
+        self.container.sessions.save_progress(
+            participant_id,
+            exercise,
+            {"analytics_comment": combine_sections(sections)},
+        )
+        return True
+
     def _render_dashboard(self) -> None:
         record = self._current_record()
         bundle = self._current_bundle()
         if not record or bundle is None:
             return
-        render_eda_dashboard(bundle)
         progress = self._exercise_progress(record, bundle.exercise)
-        st.markdown("### Tu hallazgo estadístico")
-        st.caption(
-            "Apóyate en las tres preguntas del cuaderno para redactar un hallazgo "
-            "que vaya de lo macro (la tabla) a lo micro (las variables y el riesgo)."
-        )
-        with st.form("analytics_comment_form"):
-            comment = st.text_area(
-                "¿Qué hallazgo relevante encontraste?",
-                value=progress.analytics_comment if progress else "",
-                height=140,
+        section_values = split_sections(progress.analytics_comment if progress else "")
+
+        def on_save(chapter: int, text: str) -> bool:
+            return self._save_dashboard_section(
+                record.participant_id, bundle.exercise, chapter, text
             )
-            submitted = st.form_submit_button("Guardar interpretación")
-        if submitted:
-            if self._save_validated_progress_text(
-                participant_id=record.participant_id,
-                exercise=bundle.exercise,
-                field_name="analytics_comment",
-                text=comment,
-                field_label="hallazgo analítico",
-            ):
-                st.success("Interpretación guardada.")
+
+        render_eda_dashboard(bundle, section_values=section_values, on_save=on_save)
 
     def _coerce_input(self, descriptor, value: str):
         if descriptor.variable_type == "numeric":
