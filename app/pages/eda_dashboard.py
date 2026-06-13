@@ -24,18 +24,37 @@ ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets" / "eda"
 
 TOTAL_FIGURES_APP = 14
 
-# Glosarios para leer los nombres que vienen impresos dentro de los mapas de
-# calor. Las figuras son imágenes fijas, así que no se reconstruyen: el glosario
-# solo traduce las siglas para que la audiencia juvenil pueda leer los ejes.
-GERMAN_HEATMAP_GLOSSARY = {
-    "duration_months": "plazo del crédito",
+# Glosarios para leer los nombres que vienen impresos dentro de las figuras.
+# Las figuras son imágenes fijas, así que no se reconstruyen: el glosario solo
+# traduce las siglas para que la audiencia juvenil pueda leer los ejes.
+GERMAN_NUMERIC_GLOSSARY = {
+    "duration_months": "plazo del crédito (meses)",
     "credit_amount": "monto del crédito",
+    "age_years": "edad del solicitante",
     "installment_rate": "tamaño de la cuota",
+    "present_residence": "años en la vivienda actual",
+    "existing_credits": "créditos que ya tiene",
+}
+
+GERMAN_CATEGORICAL_GLOSSARY = {
+    "status_checking_account": "estado de la cuenta corriente",
+    "credit_history": "historial de pagos previos",
+    "purpose": "para qué pidió el crédito",
+    "savings_account": "ahorros que tiene",
+    "personal_status_sex": "estado civil y sexo",
+    "housing": "tipo de vivienda",
+}
+
+GERMAN_HEATMAP_GLOSSARY = {
+    **GERMAN_NUMERIC_GLOSSARY,
     "present_residence": "años en la vivienda",
     "age_years": "edad",
-    "existing_credits": "créditos que ya tiene",
     "liable_people": "personas a cargo",
     "target": "resultado del crédito",
+}
+
+DEFAULT_LIMIT_GLOSSARY = {
+    "LIMIT_BAL": "cupo de crédito asignado",
 }
 
 DEFAULT_HEATMAP_GLOSSARY = {
@@ -53,11 +72,14 @@ GERMAN_FIGURES = [
     {"file": "german_credit_01.png", "chapter": 1,
      "title": "¿Cuántos créditos resultaron buenos y cuántos malos?"},
     {"file": "german_credit_02.png", "chapter": 2,
-     "title": "¿Cómo se reparten los montos, plazos y edades?"},
+     "title": "¿Cómo se reparten los montos, plazos y edades?",
+     "glossary": GERMAN_NUMERIC_GLOSSARY},
     {"file": "german_credit_03.png", "chapter": 2,
-     "title": "Identificación de valores atípicos"},
+     "title": "Identificación de valores atípicos",
+     "glossary": GERMAN_NUMERIC_GLOSSARY},
     {"file": "german_credit_04.png", "chapter": 2,
-     "title": "Las características más comunes de los solicitantes"},
+     "title": "Las características más comunes de los solicitantes",
+     "glossary": GERMAN_CATEGORICAL_GLOSSARY},
     {"file": "german_credit_05.png", "chapter": 3,
      "title": "Plazo y monto: ¿se diferencian los créditos buenos de los malos?"},
     {"file": "german_credit_06.png", "chapter": 3,
@@ -69,7 +91,8 @@ DEFAULT_FIGURES = [
     {"file": "default_clients_01.png", "chapter": 1,
      "title": "¿Cuántos clientes pagaron y cuántos no?"},
     {"file": "default_clients_02.png", "chapter": 2,
-     "title": "¿Cómo se reparten los cupos de crédito?"},
+     "title": "¿Cómo se reparten los cupos de crédito?",
+     "glossary": DEFAULT_LIMIT_GLOSSARY},
     {"file": "default_clients_03.png", "chapter": 3,
      "title": "El cupo de crédito frente al pago"},
     {"file": "default_clients_04.png", "chapter": 3,
