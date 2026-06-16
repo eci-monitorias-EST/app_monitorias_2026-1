@@ -234,7 +234,7 @@ class SequentialLearningFlow:
     def _render_navigation(self, step: int) -> None:
         back_col, next_col = st.columns(2)
         with back_col:
-            if st.button("Atrás", use_container_width=True, disabled=step == 1):
+            if st.button("Atrás", type="primary", use_container_width=True, disabled=step == 1):
                 self._set_current_step(self.state_machine.previous_step_id(step))
                 st.rerun()
         with next_col:
@@ -242,7 +242,7 @@ class SequentialLearningFlow:
                 return
             next_step = self.state_machine.next_step_id(step, self._build_flow_context())
             can_next = next_step is not None
-            if st.button("Siguiente", use_container_width=True, disabled=not can_next):
+            if st.button("Siguiente", type="primary", use_container_width=True, disabled=not can_next):
                 assert next_step is not None
                 self._set_current_step(next_step)
                 st.rerun()
@@ -441,9 +441,9 @@ class SequentialLearningFlow:
                     <h1>Diccionario de Datos</h1>
                     <span class="bankify-filter-pill">Filtrado por: {exercise_label}</span>
                     <p>
-                        Para realizar un an\u00e1lisis de riesgo efectivo, es fundamental comprender el origen
-                        y la naturaleza de las variables que estamos procesando. A continuaci\u00f3n, se detallan
-                        las variables clave para este ejercicio de simulaci\u00f3n bancaria.
+                        Para realizar un análisis de riesgo efectivo, es fundamental comprender el origen
+                        y la naturaleza de las variables que estamos procesando. A continuación, se detallan
+                        las variables clave para este ejercicio de simulación bancaria.
                     </p>
                 </div>
                 <span class="bankify-book-icon">\u25f0</span>
@@ -453,16 +453,16 @@ class SequentialLearningFlow:
         )
 
         type_labels = {
-            "numeric": "Num\u00e9rico",
-            "categorical": "Categ\u00f3rico",
+            "numeric": "Numérico",
+            "categorical": "Categórico",
         }
         table_rows = "\n".join(
             f"""
-            <div class="bankify-dictionary-row">
-                <div class="bankify-var-name">{descriptor.label}</div>
-                <div>{descriptor.description}</div>
-                <div><span class="bankify-type-badge">{type_labels.get(descriptor.variable_type, descriptor.variable_type.title())}</span></div>
-            </div>
+            <tr class="bankify-dictionary-row">
+                <td class="bankify-dictionary-cell bankify-var-name">{descriptor.label}</td>
+                <td class="bankify-dictionary-cell">{descriptor.description}</td>
+                <td class="bankify-dictionary-cell"><span class="bankify-type-badge">{type_labels.get(descriptor.variable_type, descriptor.variable_type.title())}</span></td>
+            </tr>
             """
             for descriptor in bundle.descriptors
         )
@@ -470,14 +470,22 @@ class SequentialLearningFlow:
             f"""
             <section class="bankify-dictionary-card">
                 <header>
-                    <span class="bankify-section-icon">\u25c6</span>
+                    <span class="bankify-section-icon">◆</span>
                     <h2>{exercise_label}</h2>
                 </header>
-                <div class="bankify-dictionary-grid">
-                    <div class="bankify-dictionary-head">Variable</div>
-                    <div class="bankify-dictionary-head">Descripci\u00f3n</div>
-                    <div class="bankify-dictionary-head">Tipo</div>
-                    {table_rows}
+                <div class="bankify-dictionary-table-wrapper">
+                    <table class="bankify-dictionary-table">
+                        <thead>
+                            <tr class="bankify-dictionary-head-row">
+                                <th class="bankify-dictionary-head">Variable</th>
+                                <th class="bankify-dictionary-head">Descripción</th>
+                                <th class="bankify-dictionary-head">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {table_rows}
+                        </tbody>
+                    </table>
                 </div>
             </section>
             """,
@@ -552,48 +560,107 @@ class SequentialLearningFlow:
         bundle = self._current_bundle()
         if not record or bundle is None:
             return
-        st.title("Predicción del modelo")
+        exercise_label = ExerciseOption.LABELS[bundle.exercise]
+        st.markdown(
+            f"""
+            <section class="bankify-prediction-hero">
+                <div>
+                    <h1>Predicción explicable</h1>
+                    <p>Completa los valores del caso de prueba y obtén una predicción con explicación pedagógica basada en el modelo seleccionado.</p>
+                </div>
+                <div class="bankify-prediction-summary">
+                    <h2>Ejercicio activo</h2>
+                    <span class="bankify-metric-label">{exercise_label}</span>
+                    <p class="bankify-metric-value">Modelo guiado por notebooks</p>
+                    <p class="bankify-metric-subtitle">Usa la lógica del modelo de crédito y el árbol de decisión para mora.</p>
+                    <span class="bankify-prediction-tag">Predicción con base académica</span>
+                </div>
+            </section>
+            <section class="bankify-prediction-panel">
+                <div class="bankify-prediction-panel-left">
+                    <h2>Entradas del caso</h2>
+                    <p>Ingresa los valores que definen el perfil y la situación financiera de la persona.</p>
+                </div>
+                <div class="bankify-prediction-panel-right">
+                    <h2>Resultados</h2>
+                    <p>La predicción y la explicación se mostrarán aquí después de ejecutar el modelo.</p>
+                </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
         st.caption("La explicación pedagógica se deriva de señales locales tipo LIME/SHAP y un agente textual desacoplado.")
         descriptor_map = {descriptor.key: descriptor for descriptor in bundle.descriptors}
-        with st.form("prediction_form"):
-            features = {}
-            for feature_name in bundle.features:
-                descriptor = descriptor_map.get(feature_name)
-                label = descriptor.label if descriptor else feature_name
-                help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
-                series = bundle.df[feature_name]
-                is_numeric = pd.api.types.is_numeric_dtype(series)
-                if is_numeric:
-                    value = st.number_input(
-                        label,
-                        value=float(series.median()),
-                        help=help_text,
-                    )
-                    features[feature_name] = value
-                else:
-                    options = sorted(series.astype(str).unique().tolist())
-                    features[feature_name] = st.selectbox(
-                        label,
-                        options=options,
-                        help=help_text,
-                    )
-            submitted = st.form_submit_button("Ejecutar predicción", type="primary")
-        if submitted:
-            result = self.container.predictions.predict(bundle.exercise, features)
-            st.session_state["prediction_cache"] = result.to_dict()
-            self.container.sessions.save_progress(
-                record.participant_id,
-                bundle.exercise,
-                {
-                    "prediction_inputs": features,
-                    "prediction_output": result.to_dict(),
-                },
-            )
+        left_col, right_col = st.columns([2, 1])
+
+        with left_col:
+            with st.form("prediction_form"):
+                features = {}
+                for feature_name in bundle.features:
+                    descriptor = descriptor_map.get(feature_name)
+                    label = descriptor.label if descriptor else feature_name
+                    help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
+                    series = bundle.df[feature_name]
+                    is_numeric = pd.api.types.is_numeric_dtype(series)
+                    if is_numeric:
+                        value = st.number_input(
+                            label,
+                            value=float(series.median()),
+                            help=help_text,
+                        )
+                        features[feature_name] = value
+                    else:
+                        options = sorted(series.astype(str).unique().tolist())
+                        features[feature_name] = st.selectbox(
+                            label,
+                            options=options,
+                            help=help_text,
+                        )
+                submitted = st.form_submit_button("Ejecutar predicción", type="primary", use_container_width=True)
+            if submitted:
+                result = self.container.predictions.predict(bundle.exercise, features)
+                st.session_state["prediction_cache"] = result.to_dict()
+                prediction_cache = result.to_dict()
+                self.container.sessions.save_progress(
+                    record.participant_id,
+                    bundle.exercise,
+                    {
+                        "prediction_inputs": features,
+                        "prediction_output": result.to_dict(),
+                    },
+                )
+            else:
+                prediction_cache = st.session_state.get("prediction_cache")
+
+        with right_col:
+            if prediction_cache:
+                st.markdown(
+                    f"""
+                    <div class="bankify-prediction-output">
+                        <h2>{prediction_cache['label']}</h2>
+                        <span class="bankify-metric-label">Probabilidad</span>
+                        <p class="bankify-metric-value">{prediction_cache['probability']:.1%}</p>
+                        <p class="bankify-metric-subtitle">Ejercicio: {exercise_label}</p>
+                        <span class="bankify-prediction-badge">{prediction_cache['provider'].replace('_', ' ').title()}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    """
+                    <div class="bankify-question-box">
+                        <span class="bankify-question-box-tag">Resumen del resultado</span>
+                        <p>El modelo genera una predicción apoyada en variables clave y una explicación pedagógica del resultado.</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.info("Completa los campos del caso de prueba y pulsa 'Ejecutar predicción' para ver el resultado.")
 
         prediction_cache = st.session_state.get("prediction_cache")
         if prediction_cache:
             progress = self._exercise_progress(record, bundle.exercise)
-            st.metric("Resultado", prediction_cache["label"], f"{prediction_cache['probability']:.1%}")
             col1, col2 = st.columns(2)
             with col1:
                 lime_df = pd.DataFrame(prediction_cache["local_explanations"]["lime"]["items"])
@@ -612,14 +679,26 @@ class SequentialLearningFlow:
                 px.bar(global_df.head(10), x="importance", y="feature", orientation="h", title="SHAP global"),
                 use_container_width=True,
             )
-            st.info(prediction_cache["pedagogical_summary"])
+            st.markdown(
+                f"""
+                <div class="bankify-result-card">
+                    <h3>Explicación pedagógica</h3>
+                    <p>{prediction_cache['pedagogical_summary']}</p>
+                </div>
+                <div class="bankify-question-box">
+                    <span class="bankify-question-box-tag">Tu turno · Reflexión</span>
+                    <p>¿Qué entendiste de la explicación del modelo y qué variable te parece más determinante?</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             with st.form("prediction_reflection_form"):
                 reflection = st.text_area(
                     "¿Qué entendiste de la explicación del modelo?",
                     value=progress.prediction_reflection if progress else "",
                     height=120,
                 )
-                submitted = st.form_submit_button("Guardar comprensión")
+                submitted = st.form_submit_button("Guardar comprensión", type="primary", use_container_width=True)
             if submitted:
                 if self._save_validated_progress_text(
                     participant_id=record.participant_id,

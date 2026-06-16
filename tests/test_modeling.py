@@ -29,7 +29,7 @@ class _FakePipeline:
 
 
 class _FakeExplainer:
-    def build_linear_explanations(
+    def build_explanations(
         self, pipeline: _FakePipeline, inputs: dict[str, Any]
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         del pipeline, inputs

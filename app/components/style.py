@@ -120,6 +120,184 @@ def inject_global_styles() -> None:
             border-radius: 10px;
             font-weight: 700;
         }
+        div[data-testid="stForm"] {
+            background: #ffffff;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 18px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+            padding: 1.25rem 1.4rem 1.35rem;
+            margin-top: 1.35rem;
+        }
+        div[data-testid="stForm"] textarea,
+        div[data-testid="stForm"] input {
+            border-radius: 12px !important;
+            border-color: #cbd5e1 !important;
+            background: #f8fafc !important;
+        }
+        div[data-testid="stForm"] button {
+            border-radius: 12px !important;
+            min-height: 3.1rem;
+            font-weight: 800;
+        }
+        .bankify-prediction-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+            gap: 1.5rem;
+            background: linear-gradient(135deg, #08245c 0%, #1367cf 100%);
+            border-radius: 24px;
+            color: #ffffff;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+        .bankify-prediction-hero h1 {
+            margin: 0.2rem 0 0.8rem;
+            font-size: 2rem;
+            letter-spacing: -0.03em;
+        }
+        .bankify-prediction-hero p {
+            color: rgba(226, 236, 255, 0.84);
+            line-height: 1.65;
+            max-width: 680px;
+        }
+        .bankify-prediction-summary {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
+            padding: 1.35rem 1.45rem;
+            min-height: 240px;
+        }
+        .bankify-prediction-summary h2 {
+            color: #e2eefa;
+            margin: 0 0 0.55rem;
+        }
+        .bankify-prediction-summary .bankify-metric-label {
+            color: #c7d8ff;
+            font-size: 0.92rem;
+            margin-bottom: 0.8rem;
+            display: block;
+        }
+        .bankify-prediction-summary .bankify-metric-value {
+            color: #ffffff;
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin: 0;
+        }
+        .bankify-prediction-summary .bankify-metric-subtitle {
+            color: rgba(226, 236, 255, 0.78);
+            margin-top: 0.2rem;
+        }
+        .bankify-prediction-summary .bankify-prediction-tag {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            color: #dbeafe;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .bankify-prediction-panel {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .bankify-prediction-panel-left,
+        .bankify-prediction-panel-right {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(14, 90, 207, 0.12);
+            border-radius: 20px;
+            padding: 1.35rem 1.4rem;
+            box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
+        }
+        .bankify-prediction-panel-left h2,
+        .bankify-prediction-panel-right h2 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            color: #08245c;
+        }
+        .bankify-prediction-panel-left p,
+        .bankify-prediction-panel-right p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.7;
+        }
+        .bankify-prediction-panel-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .bankify-prediction-output {
+            background: #ffffff;
+            border: 1px solid rgba(14, 90, 207, 0.14);
+            border-radius: 24px;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .bankify-prediction-output h2 {
+            margin: 0 0 0.75rem;
+            color: #08245c;
+        }
+        .bankify-prediction-output .bankify-metric-label {
+            color: #475569;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .bankify-prediction-output .bankify-metric-value {
+            color: #0f172a;
+            font-size: 2.35rem;
+            margin: 0;
+        }
+        .bankify-prediction-output .bankify-metric-subtitle {
+            color: #64748b;
+            margin: 0.65rem 0 0;
+            line-height: 1.65;
+        }
+        .bankify-prediction-badge {
+            display: inline-flex;
+            margin-top: 1rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .bankify-dictionary-row:first-child .bankify-dictionary-cell {
+            border-top: none;
+        }
+        .bankify-result-card {
+            background: #f8fbff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 18px;
+            padding: 1.3rem 1.45rem;
+            margin-bottom: 1rem;
+        }
+        .bankify-result-card h3 {
+            margin: 0 0 0.75rem;
+            color: #08245c;
+            font-size: 1.15rem;
+        }
+        .bankify-result-card p {
+            margin: 0.35rem 0;
+            color: #334155;
+        }
+        .bankify-form-footer {
+            border-top: 1px solid rgba(148, 163, 184, 0.18);
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+        .bankify-form-footer p {
+            color: #475569;
+            margin: 0;
+            font-size: 0.92rem;
+        }
         .bankify-profile-hero {
             position: relative;
             overflow: hidden;
@@ -274,6 +452,41 @@ def inject_global_styles() -> None:
             padding: 0.3rem 0.65rem;
             text-transform: uppercase;
         }
+        .bankify-dictionary-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 1.2rem;
+        }
+        .bankify-dictionary-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+        }
+        .bankify-dictionary-head-row {
+            background: #f8fafc;
+        }
+        .bankify-dictionary-head {
+            color: #4b5563;
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            padding: 1rem 1.2rem;
+            text-align: left;
+            text-transform: uppercase;
+            border-bottom: 1px solid #dbe5ff;
+        }
+        .bankify-dictionary-row + .bankify-dictionary-row td {
+            border-top: 1px solid #edf0f4;
+        }
+        .bankify-dictionary-cell {
+            color: #4b5563;
+            padding: 1rem 1.2rem;
+            vertical-align: top;
+        }
+        .bankify-dictionary-cell.bankify-var-name {
+            color: #001a4d !important;
+            font-weight: 800;
+        }
         .bankify-book-icon {
             color: rgba(0, 107, 214, 0.7);
             font-size: 4rem;
@@ -305,10 +518,18 @@ def inject_global_styles() -> None:
             color: #006bd6;
             font-size: 1.2rem;
         }
-        .bankify-dictionary-grid {
-            display: grid;
-            grid-template-columns: minmax(180px, 1fr) minmax(260px, 2.5fr) minmax(110px, 0.8fr);
+        .bankify-dictionary-table-wrapper {
             width: 100%;
+            overflow-x: auto;
+            margin-top: 1.2rem;
+        }
+        .bankify-dictionary-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+        }
+        .bankify-dictionary-head-row {
+            background: #f8fafc;
         }
         .bankify-dictionary-head {
             color: #4b5563;
@@ -318,16 +539,17 @@ def inject_global_styles() -> None:
             padding: 1rem 1.2rem;
             text-align: left;
             text-transform: uppercase;
+            border-bottom: 1px solid #dbe5ff;
         }
-        .bankify-dictionary-row {
-            display: contents;
-        }
-        .bankify-dictionary-row > div {
+        .bankify-dictionary-row + .bankify-dictionary-row td {
             border-top: 1px solid #edf0f4;
+        }
+        .bankify-dictionary-cell {
             color: #4b5563;
             padding: 1rem 1.2rem;
+            vertical-align: top;
         }
-        .bankify-var-name {
+        .bankify-dictionary-cell.bankify-var-name {
             color: #001a4d !important;
             font-weight: 800;
         }
@@ -339,6 +561,32 @@ def inject_global_styles() -> None:
             font-size: 0.78rem;
             font-weight: 800;
             padding: 0.28rem 0.55rem;
+        }
+        .bankify-question-box {
+            margin: 1.5rem 0 1rem;
+            padding: 1.25rem 1.35rem;
+            border-radius: 16px;
+            background: #f8fbff;
+            border: 1px solid #dbe5ff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        }
+        .bankify-question-box-tag {
+            display: inline-block;
+            margin-bottom: 0.75rem;
+            background: #0f2c6b;
+            color: #ffffff;
+            border-radius: 999px;
+            padding: 0.26rem 0.72rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .bankify-question-box p {
+            margin: 0;
+            color: #334155;
+            font-size: 1rem;
+            line-height: 1.55;
         }
         .bankify-eda-gallery {
             background: rgba(255, 255, 255, 0.82);
