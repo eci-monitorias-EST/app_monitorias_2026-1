@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from services.modeling import DatasetCatalog, ModelRegistry, PredictionService
+from services.modeling import DatasetCatalog, ModelEvaluationService, ModelRegistry, PredictionService
 from services.remote_sync import build_remote_sync_client
 from services.session_service import SessionService
 from services.storage import JsonStateStore
@@ -18,6 +18,7 @@ class AppContainer:
         self.catalog = DatasetCatalog()
         self.models = ModelRegistry(self.catalog)
         self.predictions = PredictionService(self.models)
+        self.model_evaluation = ModelEvaluationService(self.catalog)
         self.comments = CommentAnalyticsService(store=self.store, remote_sync=self.remote_sync)
         self.keywords = CommentKeywordService()
         self.submission_validation = SubmissionValidationService()

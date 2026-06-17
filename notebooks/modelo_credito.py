@@ -8,6 +8,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+import shap
 
 
 # carga de datos 
@@ -347,8 +349,45 @@ print(confusion_matrix(y_test, y_pred_optimal))
 print("\nReporte de clasificación:")
 print(classification_report(y_test, y_pred_optimal))
 
-# se tiene que al emplear el indice de youden se redujeron los falsos negativos, pero a su vez parece ser que se 
+# se tiene que al emplear el indice de youden se redujeron los falsos negativos, pero a su vez parece ser que se
 # vio afectada la capacidad predictoria en los verdaderos positivos
+
+##===================================================================
+## metricas explicitas para el dashboard (umbral 0.5)
+##===================================================================
+
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+cm = confusion_matrix(y_test, y_pred)
+
+print("\nMétricas del modelo de Aprobación de crédito (umbral 0.5):")
+print(f"Accuracy : {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall   : {recall:.4f}")
+print("Matriz de confusión [[TN, FP], [FN, TP]]:")
+print(cm)
+
+##===================================================================
+## importancia de variables (SHAP)
+##===================================================================
+
+explainer = shap.LinearExplainer(model, X_train, feature_perturbation="interventional")
+shap_values = explainer.shap_values(X_test)
+
+shap_importance = (
+    pd.DataFrame({"variable": X_test.columns, "shap_importance": abs(shap_values).mean(axis=0)})
+    .sort_values(by="shap_importance", ascending=False)
+)
+print("\nImportancia de variables según SHAP (promedio del valor absoluto):")
+print(shap_importance.head(15).to_string(index=False))
+
+plt.figure()
+shap.summary_plot(shap_values, X_test, show=False)
+plt.title("Importancia de variables (SHAP) - Regresión Logística")
+plt.tight_layout()
+plt.savefig("shap_credito.png", dpi=150, bbox_inches="tight")
+plt.show()
 
 """
 ###==================================================================

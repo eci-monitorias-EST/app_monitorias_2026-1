@@ -13,6 +13,18 @@ def inject_global_styles() -> None:
                 radial-gradient(circle at top right, rgba(21, 94, 239, 0.12), transparent 26%),
                 linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
         }
+        button[kind="primary"],
+        button[kind="primaryFormSubmit"] {
+            background-color: #1f77b4 !important;
+            border-color: #1f77b4 !important;
+            color: #ffffff !important;
+        }
+        button[kind="primary"]:hover,
+        button[kind="primaryFormSubmit"]:hover {
+            background-color: #15598f !important;
+            border-color: #15598f !important;
+            color: #ffffff !important;
+        }
         .bankify-hero {
             position: relative;
             overflow: hidden;
@@ -288,6 +300,87 @@ def inject_global_styles() -> None:
             margin: 0.35rem 0;
             color: #334155;
         }
+        .bankify-model-performance {
+            margin: 2rem auto 0;
+            max-width: 1080px;
+        }
+        .bankify-model-performance h2 {
+            color: #08245c;
+            font-size: 1.4rem;
+            margin: 0 0 0.4rem;
+        }
+        .bankify-model-intro {
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            margin: 0 0 1.2rem;
+        }
+        .bankify-kpi-grid {
+            display: grid;
+            gap: 0.9rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin: 0 0 1.5rem;
+        }
+        @media (max-width: 1100px) { .bankify-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .bankify-kpi-card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            padding: 1.1rem 1.25rem;
+        }
+        .bankify-kpi-label {
+            color: #475569;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .bankify-kpi-value {
+            color: #08245c;
+            font-size: 1.85rem;
+            font-weight: 700;
+        }
+        .bankify-kpi-hint {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.35;
+        }
+        .bankify-cm-tag {
+            color: #1d4ed8;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            margin: 0 0 0.6rem;
+            text-transform: uppercase;
+        }
+        .bankify-cm-wrapper {
+            margin: 0 0 1.7rem;
+            overflow-x: auto;
+        }
+        .bankify-cm-table {
+            border-collapse: collapse;
+            min-width: 480px;
+        }
+        .bankify-cm-table th {
+            color: #475569;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.6rem 1rem;
+            text-align: left;
+        }
+        .bankify-cm-table td {
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 0.9rem 1.4rem;
+            text-align: center;
+        }
+        .bankify-cm-good { background: #defbe9; color: #047857; }
+        .bankify-cm-bad { background: #ffe8ec; color: #be123c; }
         .bankify-form-footer {
             border-top: 1px solid rgba(148, 163, 184, 0.18);
             margin-top: 1rem;

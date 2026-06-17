@@ -13,7 +13,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import (
     classification_report, confusion_matrix,
-    roc_curve, roc_auc_score, f1_score
+    roc_curve, roc_auc_score, f1_score,
+    accuracy_score, precision_score, recall_score
 )
 
 # ============================================================
@@ -109,11 +110,22 @@ print(f"F1:     {f1_scores.mean():.4f} ± {f1_scores.std():.4f}")
 y_pred = modelo_arbol.predict(X_test)
 y_prob = modelo_arbol.predict_proba(X_test)[:, 1]
 
+cm = confusion_matrix(y_test, y_pred)
 print("\nMatriz de Confusión (umbral 0.5):")
-print(confusion_matrix(y_test, y_pred))
+print(cm)
 
 print("\nReporte de Clasificación (umbral 0.5):")
 print(classification_report(y_test, y_pred))
+
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+print("\nMétricas del modelo de Probabilidad de mora (umbral 0.5):")
+print(f"Accuracy : {accuracy:.4f}")
+print(f"Precision: {precision:.4f}")
+print(f"Recall   : {recall:.4f}")
+print("Matriz de confusión [[TN, FP], [FN, TP]]:")
+print(cm)
 
 auc = roc_auc_score(y_test, y_prob)
 print(f"\nAUC-ROC: {auc:.4f}")
@@ -179,7 +191,20 @@ explainer = shap.TreeExplainer(modelo_arbol)
 shap_values = explainer.shap_values(X_test)
 
 # Para clasificación binaria, shap_values puede ser una lista [clase0, clase1]
-shap_vals_default = shap_values[1] if isinstance(shap_values, list) else shap_values
+# o un array 3D (muestras, variables, clases), según la versión de shap instalada
+if isinstance(shap_values, list):
+    shap_vals_default = shap_values[1] if len(shap_values) > 1 else shap_values[0]
+elif isinstance(shap_values, np.ndarray) and shap_values.ndim == 3:
+    shap_vals_default = shap_values[:, :, 1] if shap_values.shape[2] > 1 else shap_values[:, :, 0]
+else:
+    shap_vals_default = shap_values
+
+shap_importance = (
+    pd.DataFrame({"variable": X_test.columns, "shap_importance": np.abs(shap_vals_default).mean(axis=0)})
+    .sort_values(by="shap_importance", ascending=False)
+)
+print("\nImportancia de variables según SHAP (promedio del valor absoluto):")
+print(shap_importance.to_string(index=False))
 
 plt.figure()
 shap.summary_plot(shap_vals_default, X_test, show=False)

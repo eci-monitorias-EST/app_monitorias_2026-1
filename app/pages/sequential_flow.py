@@ -4,12 +4,11 @@ from datetime import datetime
 from typing import Callable
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from components.style import inject_global_styles
-from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
+from domain.models import ExerciseOption, ExerciseProgress, ModelEvaluationResult, ParticipantRecord
 from pages.eda_dashboard import combine_sections, render_eda_dashboard, split_sections
 from services.modeling import DatasetBundle
 from services.app_container import get_container
@@ -17,6 +16,93 @@ from services.comment_events import COMMENT_TYPE_LABELS
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
 from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
+
+
+def _html(markup: str) -> None:
+    """Renderiza HTML aplanado en una sola línea.
+
+    Markdown interpreta como bloque de código cualquier línea con 4+ espacios
+    de indentación, por lo que el HTML multilínea generado con f-strings se
+    filtraría como texto crudo.
+    """
+    st.markdown(" ".join(line.strip() for line in markup.splitlines()), unsafe_allow_html=True)
+
+
+def _render_model_performance(evaluation: ModelEvaluationResult) -> None:
+    _html(
+        f"""
+        <section class="bankify-model-performance">
+            <h2>Desempeño del modelo</h2>
+            <p class="bankify-model-intro">
+                Resultados del modelo <b>{evaluation.model_name}</b> (el mismo construido en los
+                notebooks de este ejercicio) medidos sobre {evaluation.test_size:,} casos de prueba
+                que el modelo no usó para aprender.
+            </p>
+        </section>
+        """
+    )
+
+    metrics = [
+        ("Accuracy", evaluation.accuracy, "De todas las predicciones, qué porcentaje fue correcto."),
+        ("Precision", evaluation.precision, "De los casos marcados como positivos, qué porcentaje lo era de verdad."),
+        ("Recall", evaluation.recall, "De los casos positivos reales, qué porcentaje detectó el modelo."),
+        ("F1-Score", evaluation.f1, "Balance entre precision y recall."),
+    ]
+    cards = "".join(
+        f"""
+        <div class="bankify-kpi-card">
+            <span class="bankify-kpi-label">{label}</span>
+            <span class="bankify-kpi-value">{value:.1%}</span>
+            <span class="bankify-kpi-hint">{hint}</span>
+        </div>
+        """
+        for label, value, hint in metrics
+    )
+    _html(f"<div class='bankify-kpi-grid'>{cards}</div>")
+
+    negative_label, positive_label = evaluation.class_labels
+    (tn, fp), (fn, tp) = evaluation.confusion_matrix
+    _html("<p class='bankify-cm-tag'>Matriz de confusión (conjunto de prueba)</p>")
+    _html(
+        f"""
+        <div class="bankify-cm-wrapper">
+            <table class="bankify-cm-table">
+                <tr>
+                    <th></th>
+                    <th>Predicho: {negative_label}</th>
+                    <th>Predicho: {positive_label}</th>
+                </tr>
+                <tr>
+                    <th>Real: {negative_label}</th>
+                    <td class="bankify-cm-good">{tn}</td>
+                    <td class="bankify-cm-bad">{fp}</td>
+                </tr>
+                <tr>
+                    <th>Real: {positive_label}</th>
+                    <td class="bankify-cm-bad">{fn}</td>
+                    <td class="bankify-cm-good">{tp}</td>
+                </tr>
+            </table>
+        </div>
+        """
+    )
+
+    _html("<p class='bankify-cm-tag'>Variables con mayor peso en la predicción (SHAP)</p>")
+    top_items = list(reversed(evaluation.shap_importance[:8]))
+    fig = go.Figure(
+        go.Bar(
+            x=[item["importance"] for item in top_items],
+            y=[item["feature"] for item in top_items],
+            orientation="h",
+            marker_color="#006bd6",
+        )
+    )
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=340,
+        xaxis_title="Impacto medio en la predicción (|SHAP|)",
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 
 class SequentialLearningFlow:
@@ -466,7 +552,7 @@ class SequentialLearningFlow:
             """
             for descriptor in bundle.descriptors
         )
-        st.markdown(
+        _html(
             f"""
             <section class="bankify-dictionary-card">
                 <header>
@@ -488,8 +574,7 @@ class SequentialLearningFlow:
                     </table>
                 </div>
             </section>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
         progress = self._exercise_progress(record, bundle.exercise)
@@ -561,7 +646,7 @@ class SequentialLearningFlow:
         if not record or bundle is None:
             return
         exercise_label = ExerciseOption.LABELS[bundle.exercise]
-        st.markdown(
+        _html(
             f"""
             <section class="bankify-prediction-hero">
                 <div>
@@ -586,10 +671,8 @@ class SequentialLearningFlow:
                     <p>La predicción y la explicación se mostrarán aquí después de ejecutar el modelo.</p>
                 </div>
             </section>
-            """,
-            unsafe_allow_html=True,
+            """
         )
-        st.caption("La explicación pedagógica se deriva de señales locales tipo LIME/SHAP y un agente textual desacoplado.")
         descriptor_map = {descriptor.key: descriptor for descriptor in bundle.descriptors}
         left_col, right_col = st.columns([2, 1])
 
@@ -634,7 +717,7 @@ class SequentialLearningFlow:
 
         with right_col:
             if prediction_cache:
-                st.markdown(
+                _html(
                     f"""
                     <div class="bankify-prediction-output">
                         <h2>{prediction_cache['label']}</h2>
@@ -643,43 +726,17 @@ class SequentialLearningFlow:
                         <p class="bankify-metric-subtitle">Ejercicio: {exercise_label}</p>
                         <span class="bankify-prediction-badge">{prediction_cache['provider'].replace('_', ' ').title()}</span>
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
                     """
-                    <div class="bankify-question-box">
-                        <span class="bankify-question-box-tag">Resumen del resultado</span>
-                        <p>El modelo genera una predicción apoyada en variables clave y una explicación pedagógica del resultado.</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
                 )
             else:
                 st.info("Completa los campos del caso de prueba y pulsa 'Ejecutar predicción' para ver el resultado.")
 
-        prediction_cache = st.session_state.get("prediction_cache")
+        evaluation = self.container.model_evaluation.evaluate(bundle.exercise)
+        _render_model_performance(evaluation)
+
         if prediction_cache:
             progress = self._exercise_progress(record, bundle.exercise)
-            col1, col2 = st.columns(2)
-            with col1:
-                lime_df = pd.DataFrame(prediction_cache["local_explanations"]["lime"]["items"])
-                st.plotly_chart(
-                    px.bar(lime_df.head(8), x="impact", y="feature", orientation="h", title="LIME local"),
-                    use_container_width=True,
-                )
-            with col2:
-                shap_df = pd.DataFrame(prediction_cache["local_explanations"]["shap_local"]["items"])
-                st.plotly_chart(
-                    px.bar(shap_df.head(8), x="impact", y="feature", orientation="h", title="SHAP local"),
-                    use_container_width=True,
-                )
-            global_df = pd.DataFrame(prediction_cache["global_explanations"]["shap_global"]["items"])
-            st.plotly_chart(
-                px.bar(global_df.head(10), x="importance", y="feature", orientation="h", title="SHAP global"),
-                use_container_width=True,
-            )
-            st.markdown(
+            _html(
                 f"""
                 <div class="bankify-result-card">
                     <h3>Explicación pedagógica</h3>
@@ -689,8 +746,7 @@ class SequentialLearningFlow:
                     <span class="bankify-question-box-tag">Tu turno · Reflexión</span>
                     <p>¿Qué entendiste de la explicación del modelo y qué variable te parece más determinante?</p>
                 </div>
-                """,
-                unsafe_allow_html=True,
+                """
             )
             with st.form("prediction_reflection_form"):
                 reflection = st.text_area(

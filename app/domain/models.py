@@ -181,6 +181,23 @@ class CommentEvent:
 
 
 @dataclass
+class ModelEvaluationResult:
+    exercise: str
+    model_name: str
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+    confusion_matrix: list[list[int]]
+    class_labels: tuple[str, str]
+    shap_importance: list[dict[str, Any]]
+    test_size: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class PredictionResult:
     exercise: str
     probability: float

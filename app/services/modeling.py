@@ -11,11 +11,13 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
-from domain.models import ExerciseOption, PredictionResult, VariableDescriptor
+from domain.models import ExerciseOption, ModelEvaluationResult, PredictionResult, VariableDescriptor
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -169,39 +171,42 @@ class DatasetCatalog:
         return self.load_default_risk()
 
 
+def build_preprocessor(bundle: DatasetBundle) -> ColumnTransformer:
+    X = bundle.df[bundle.features]
+    numeric_columns = X.select_dtypes(include=["number"]).columns.tolist()
+    categorical_columns = [column for column in bundle.features if column not in numeric_columns]
+    return ColumnTransformer(
+        transformers=[
+            (
+                "num",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                numeric_columns,
+            ),
+            (
+                "cat",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("encoder", OneHotEncoder(handle_unknown="ignore")),
+                    ]
+                ),
+                categorical_columns,
+            ),
+        ]
+    )
+
+
 class ModelRegistry:
     def __init__(self, catalog: DatasetCatalog) -> None:
         self.catalog = catalog
         self._models: dict[str, tuple[Pipeline, DatasetBundle]] = {}
 
     def _build_pipeline(self, bundle: DatasetBundle) -> Pipeline:
-        X = bundle.df[bundle.features]
-        numeric_columns = X.select_dtypes(include=["number"]).columns.tolist()
-        categorical_columns = [column for column in bundle.features if column not in numeric_columns]
-        preprocessor = ColumnTransformer(
-            transformers=[
-                (
-                    "num",
-                    Pipeline(
-                        steps=[
-                            ("imputer", SimpleImputer(strategy="median")),
-                            ("scaler", StandardScaler()),
-                        ]
-                    ),
-                    numeric_columns,
-                ),
-                (
-                    "cat",
-                    Pipeline(
-                        steps=[
-                            ("imputer", SimpleImputer(strategy="most_frequent")),
-                            ("encoder", OneHotEncoder(handle_unknown="ignore")),
-                        ]
-                    ),
-                    categorical_columns,
-                ),
-            ]
-        )
         classifier = (
             DecisionTreeClassifier(
                 max_depth=6,
@@ -216,11 +221,11 @@ class ModelRegistry:
         )
         model = Pipeline(
             steps=[
-                ("preprocessor", preprocessor),
+                ("preprocessor", build_preprocessor(bundle)),
                 ("classifier", classifier),
             ]
         )
-        model.fit(X, bundle.df[bundle.target])
+        model.fit(bundle.df[bundle.features], bundle.df[bundle.target])
         return model
 
     def get_model(self, exercise: str) -> tuple[Pipeline, DatasetBundle]:
@@ -228,6 +233,112 @@ class ModelRegistry:
             bundle = self.catalog.get_bundle(exercise)
             self._models[exercise] = (self._build_pipeline(bundle), bundle)
         return self._models[exercise]
+
+
+EVALUATION_CLASS_LABELS = {
+    ExerciseOption.CREDIT_APPROVAL: ("Requiere revisión", "Aprobado"),
+    ExerciseOption.DEFAULT_RISK: ("Sin mora", "Mora"),
+}
+
+EVALUATION_MODEL_NAMES = {
+    ExerciseOption.CREDIT_APPROVAL: "Regresión logística",
+    ExerciseOption.DEFAULT_RISK: "Árbol de decisión",
+}
+
+
+def _positive_class_shap_values(shap_values: Any) -> np.ndarray:
+    """Normaliza la salida de SHAP (lista por clase o array 3D) a un array 2D (muestras x variables) de la clase positiva."""
+    if isinstance(shap_values, list):
+        return np.asarray(shap_values[1] if len(shap_values) > 1 else shap_values[0])
+    array = np.asarray(shap_values)
+    if array.ndim == 3:
+        return array[:, :, 1] if array.shape[2] > 1 else array[:, :, 0]
+    return array
+
+
+class ModelEvaluationService:
+    """Evalúa, sobre un split de prueba, el modelo seleccionado en los notebooks de cada ejercicio
+    (notebooks/modelo_credito.py y notebooks/modelo_mora_seleecionado.py)."""
+
+    def __init__(self, catalog: DatasetCatalog) -> None:
+        self.catalog = catalog
+        self._cache: dict[str, ModelEvaluationResult] = {}
+
+    @staticmethod
+    def _build_classifier(exercise: str) -> BaseEstimator:
+        if exercise == ExerciseOption.DEFAULT_RISK:
+            return DecisionTreeClassifier(
+                max_depth=6,
+                min_samples_leaf=27,
+                min_samples_split=13,
+                criterion="entropy",
+                class_weight="balanced",
+                random_state=42,
+            )
+        return LogisticRegression(max_iter=1000, random_state=42, class_weight="balanced")
+
+    def evaluate(self, exercise: str) -> ModelEvaluationResult:
+        if exercise not in self._cache:
+            self._cache[exercise] = self._evaluate(exercise)
+        return self._cache[exercise]
+
+    def _evaluate(self, exercise: str) -> ModelEvaluationResult:
+        bundle = self.catalog.get_bundle(exercise)
+        X = bundle.df[bundle.features]
+        y = bundle.df[bundle.target]
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, stratify=y, random_state=42
+        )
+
+        preprocessor = build_preprocessor(bundle)
+        classifier = self._build_classifier(exercise)
+        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("classifier", classifier)])
+        pipeline.fit(X_train, y_train)
+        y_pred = pipeline.predict(X_test)
+
+        feature_names = [
+            name.split("__", 1)[-1] for name in preprocessor.get_feature_names_out().tolist()
+        ]
+        transformed_test = preprocessor.transform(X_test)
+        transformed_test = (
+            transformed_test.toarray() if hasattr(transformed_test, "toarray") else transformed_test
+        )
+
+        if isinstance(classifier, DecisionTreeClassifier):
+            explainer = shap.TreeExplainer(classifier)
+            shap_values = explainer.shap_values(transformed_test)
+        else:
+            transformed_train = preprocessor.transform(X_train)
+            transformed_train = (
+                transformed_train.toarray() if hasattr(transformed_train, "toarray") else transformed_train
+            )
+            explainer = shap.LinearExplainer(
+                classifier, transformed_train, feature_perturbation="interventional"
+            )
+            shap_values = explainer.shap_values(transformed_test)
+
+        mean_abs_shap = np.abs(_positive_class_shap_values(shap_values)).mean(axis=0)
+        shap_importance = sorted(
+            (
+                {"feature": name, "importance": float(value)}
+                for name, value in zip(feature_names, mean_abs_shap)
+            ),
+            key=lambda item: item["importance"],
+            reverse=True,
+        )[:10]
+
+        return ModelEvaluationResult(
+            exercise=exercise,
+            model_name=EVALUATION_MODEL_NAMES[exercise],
+            accuracy=float(accuracy_score(y_test, y_pred)),
+            precision=float(precision_score(y_test, y_pred, zero_division=0)),
+            recall=float(recall_score(y_test, y_pred, zero_division=0)),
+            f1=float(f1_score(y_test, y_pred, zero_division=0)),
+            confusion_matrix=confusion_matrix(y_test, y_pred).tolist(),
+            class_labels=EVALUATION_CLASS_LABELS[exercise],
+            shap_importance=shap_importance,
+            test_size=len(y_test),
+        )
 
 
 class ExplainabilityService:
