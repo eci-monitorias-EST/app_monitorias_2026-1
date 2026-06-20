@@ -1,0 +1,14 @@
+.git
+.gga
+.dvc/cache
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.streamlit/secrets.toml
+.env
+data/processed/*.db
+data/processed/*.json
+data/processed/test_batches
+data/processed/sheet_snapshots
+notebooks

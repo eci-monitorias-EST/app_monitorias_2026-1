@@ -7,7 +7,7 @@ from typing import Any
 import requests
 
 from config.settings import get_form_token, get_script_url
-from services.configuration import load_app_config
+from services.configuration import AppConfig, load_app_config
 
 
 LOGGER = logging.getLogger(__name__)
@@ -29,10 +29,14 @@ class RemoteSyncClient:
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
         return None
 
-    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_comment_events(
+        self, exercise: str, limit_rows: int
+    ) -> list[dict[str, Any]] | None:
         return None
 
-    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_projection_comments(
+        self, exercise: str, limit_rows: int
+    ) -> list[dict[str, Any]] | None:
         return None
 
     def query_embeddings_cache(
@@ -65,8 +69,8 @@ class NoopRemoteSyncClient(RemoteSyncClient):
 
 
 class AppsScriptSyncClient(RemoteSyncClient):
-    def __init__(self) -> None:
-        config = load_app_config()
+    def __init__(self, config: AppConfig | None = None) -> None:
+        config = config or load_app_config()
         self.timeout = int(config.persistence.get("request_timeout_seconds", 10))
         self.url = get_script_url()
         self.token = get_form_token()
@@ -163,23 +167,27 @@ class AppsScriptSyncClient(RemoteSyncClient):
     def sync_completion(self, completion_payload: dict[str, Any]) -> None:
         self._request("marcar_completado", completion_payload)
 
-    def query_comment_events(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_comment_events(
+        self, exercise: str, limit_rows: int
+    ) -> list[dict[str, Any]] | None:
         payload = self._request(
             "query_comment_events",
             {"exercise": exercise, "limit_rows": limit_rows},
         )
         if payload is None:
             return None
-        return list(payload.get("rows", []))
+        return self._extract_rows(payload, "query_comment_events")
 
-    def query_projection_comments(self, exercise: str, limit_rows: int) -> list[dict[str, Any]] | None:
+    def query_projection_comments(
+        self, exercise: str, limit_rows: int
+    ) -> list[dict[str, Any]] | None:
         payload = self._request(
             "query_projection_comments",
             {"exercise": exercise, "limit_rows": limit_rows},
         )
         if payload is None:
             return None
-        return list(payload.get("rows", []))
+        return self._extract_rows(payload, "query_projection_comments")
 
     def query_embeddings_cache(
         self,
@@ -198,7 +206,7 @@ class AppsScriptSyncClient(RemoteSyncClient):
         )
         if payload is None:
             return None
-        return list(payload.get("rows", []))
+        return self._extract_rows(payload, "query_embeddings_cache")
 
     def upsert_embeddings_cache(self, rows: list[dict[str, Any]]) -> None:
         self._request("upsert_embeddings_cache", {"rows": rows})
@@ -220,14 +228,30 @@ class AppsScriptSyncClient(RemoteSyncClient):
         )
         if payload is None:
             return None
-        return list(payload.get("rows", []))
+        return self._extract_rows(payload, "query_projection_cache")
 
     def upsert_projection_cache(self, rows: list[dict[str, Any]]) -> None:
         self._request("upsert_projection_cache", {"rows": rows})
 
+    def _extract_rows(
+        self, payload: dict[str, Any], action: str
+    ) -> list[dict[str, Any]]:
+        rows = payload.get("rows", [])
+        if not isinstance(rows, list):
+            LOGGER.warning(
+                "Remote sync returned invalid rows payload", extra={"action": action}
+            )
+            return []
+        if not all(isinstance(row, dict) for row in rows):
+            LOGGER.warning(
+                "Remote sync returned non-object rows", extra={"action": action}
+            )
+            return []
+        return [dict(row) for row in rows]
 
-def build_remote_sync_client() -> RemoteSyncClient:
-    config = load_app_config()
-    if config.persistence.get("sync_to_apps_script"):
-        return AppsScriptSyncClient()
+
+def build_remote_sync_client(config: AppConfig | None = None) -> RemoteSyncClient:
+    resolved_config = config or load_app_config()
+    if resolved_config.remote_sync_enabled:
+        return AppsScriptSyncClient(resolved_config)
     return NoopRemoteSyncClient()
