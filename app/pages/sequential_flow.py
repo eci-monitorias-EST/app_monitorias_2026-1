@@ -902,12 +902,15 @@ class SequentialLearningFlow:
         st.write("Ejercicio creado por los monitores de Ingeniería Estadística.")
         progress = self._exercise_progress(record, bundle.exercise)
         previous = progress.feedback if progress else None
+        default_star_index = max(0, min(4, previous.rating - 1)) if previous else 3
+        st.write("Califica la experiencia")
+        selected_star = st.feedback("stars", default=default_star_index, key="feedback_stars")
+        rating = (selected_star if selected_star is not None else default_star_index) + 1
         with st.form("feedback_form"):
-            rating = st.slider("Califica la experiencia", min_value=0, max_value=5, value=previous.rating if previous else 4)
             summary = st.text_area("Resumen de la experiencia", value=previous.summary if previous else "")
             missing_topics = ""
             improvement_ideas = ""
-            if rating < 3:
+            if rating <= 3:
                 missing_topics = st.text_area(
                     "¿Qué faltó para que la experiencia fuera mejor?",
                     value=previous.missing_topics if previous else "",

@@ -53,6 +53,14 @@ class ExerciseProgress:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ExerciseProgress":
+        payload = dict(payload)
+        feedback_payload = payload.get("feedback")
+        if isinstance(feedback_payload, dict):
+            payload["feedback"] = FeedbackRecord(**feedback_payload)
+        return cls(**payload)
+
 
 @dataclass
 class FeedbackRecord:
@@ -113,7 +121,7 @@ class ParticipantRecord:
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ParticipantRecord":
         progress = {
-            key: ExerciseProgress(**value)
+            key: ExerciseProgress.from_dict(value)
             for key, value in payload.get("exercise_progress", {}).items()
         }
         feedback_payload = payload.get("feedback")
