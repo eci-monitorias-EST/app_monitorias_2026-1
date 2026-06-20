@@ -91,9 +91,9 @@ class SQLiteStateStore:
     """SQLite-backed state store that mirrors JsonStateStore behavior."""
 
     def __init__(self, db_path: Path | str | None = None) -> None:
-        self.db_path = db_path
+        self.db_path = Path(db_path) if db_path is not None else None
         self._submission_validation = SubmissionValidationService()
-        create_tables(db_path)
+        create_tables(self.db_path)
 
     @staticmethod
     def normalize_access_code(value: str) -> str:
