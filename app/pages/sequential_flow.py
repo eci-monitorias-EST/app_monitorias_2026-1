@@ -888,10 +888,6 @@ class SequentialLearningFlow:
         st.caption(
             f"Embeddings: {projection['embedding_provider']} | Reducción: {projection['reduction_provider']}"
         )
-        st.dataframe(
-            df[["public_alias", "comment_type_label", "comment", "current_user"]],
-            use_container_width=True,
-        )
 
     def _render_final_feedback(self) -> None:
         record = self._current_record()
