@@ -90,6 +90,10 @@ CacheRow = EmbeddingCacheRow | ProjectionCacheRow
 class SQLiteStateStore:
     """SQLite-backed state store that mirrors JsonStateStore behavior."""
 
+    ACCESS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    ACCESS_CODE_GROUP_LENGTH = 4
+    ACCESS_CODE_GROUP_COUNT = 3
+
     def __init__(self, db_path: Path | str | None = None) -> None:
         self.db_path = Path(db_path) if db_path is not None else None
         self._submission_validation = SubmissionValidationService()
@@ -111,6 +115,37 @@ class SQLiteStateStore:
     @classmethod
     def hash_access_key(cls, value: str) -> str:
         return cls.hash_access_code(value)
+
+    @classmethod
+    def generate_access_code(cls) -> str:
+        groups = [
+            "".join(
+                secrets.choice(cls.ACCESS_CODE_ALPHABET)
+                for _ in range(cls.ACCESS_CODE_GROUP_LENGTH)
+            )
+            for _ in range(cls.ACCESS_CODE_GROUP_COUNT)
+        ]
+        return "-".join(groups)
+
+    def create_participant(self, profile: dict[str, Any]) -> ParticipantRecord:
+        try:
+            with self._connect() as conn:
+                access_code_display, access_code_hash = (
+                    self._generate_unique_access_code(conn)
+                )
+                record = ParticipantRecord(
+                    participant_id=secrets.token_hex(6),
+                    access_code_hash=access_code_hash,
+                    public_alias=f"P-{self._participant_count(conn) + 1:03d}",
+                    profile=dict(profile),
+                    access_code_display=access_code_display,
+                )
+                self._save_record(conn, record)
+                conn.commit()
+                return record
+        except sqlite3.Error:
+            LOGGER.exception("Could not create SQLite participant")
+            raise
 
     def upsert_participant(
         self, access_key: str, profile: dict[str, Any]
@@ -358,6 +393,20 @@ class SQLiteStateStore:
 
     def _participant_count(self, conn: sqlite3.Connection) -> int:
         return int(conn.execute("SELECT COUNT(*) FROM sesiones").fetchone()[0])
+
+    def _generate_unique_access_code(self, conn: sqlite3.Connection) -> tuple[str, str]:
+        existing_hashes = {
+            str(row["access_code_hash"])
+            for row in conn.execute(
+                "SELECT access_code_hash FROM sesiones WHERE access_code_hash IS NOT NULL"
+            ).fetchall()
+        }
+        for _ in range(32):
+            access_code_display = self.generate_access_code()
+            access_code_hash = self.hash_access_code(access_code_display)
+            if access_code_hash not in existing_hashes:
+                return access_code_display, access_code_hash
+        raise RuntimeError("Could not generate a unique SQLite access code.")
 
     def _load_profile(
         self, conn: sqlite3.Connection, participant_id: str

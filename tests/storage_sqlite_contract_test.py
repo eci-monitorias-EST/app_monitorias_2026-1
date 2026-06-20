@@ -12,6 +12,8 @@ from services.storage_sqlite import EmbeddingCacheRow, ProjectionCacheRow
 
 
 class SQLiteStateStoreContract(Protocol):
+    def create_participant(self, profile: dict[str, Any]) -> ParticipantRecord: ...
+
     def upsert_participant(
         self, access_key: str, profile: dict[str, Any]
     ) -> ParticipantRecord: ...
@@ -93,6 +95,20 @@ def test_participant_profile_round_trip(store: SQLiteStateStoreContract) -> None
         "program": "Ciencias",
     }
     assert recovered_by_id.profile == recovered.profile
+
+
+def test_create_participant_generates_access_code_and_alias(
+    store: SQLiteStateStoreContract,
+) -> None:
+    first = store.create_participant({"name": "Ana"})
+    second = store.create_participant({"name": "Luis"})
+
+    assert first.public_alias == "P-001"
+    assert second.public_alias == "P-002"
+    assert first.access_code_display
+    assert second.access_code_display
+    assert first.access_code_hash != second.access_code_hash
+    assert store.get_participant(first.access_code_display) is not None
 
 
 def test_selected_exercise_round_trip(store: SQLiteStateStoreContract) -> None:
