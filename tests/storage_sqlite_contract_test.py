@@ -246,7 +246,7 @@ def test_list_completed_comments_matches_json_store_parity_rules(
     assert {comment.exercise for comment in comments} == {"credit_approval"}
     assert {comment.comment_type for comment in comments} == {
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
         "prediction_reflection",
     }
 

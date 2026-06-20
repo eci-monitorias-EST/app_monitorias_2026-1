@@ -11,13 +11,13 @@ guarda su respuesta.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Callable
 
 import streamlit as st
 
 from domain.models import ExerciseOption
+from services.dashboard_sections import SECTION_LABELS, combine_sections, split_sections
 from services.modeling import DatasetBundle
 
 ASSETS_DIR = Path(__file__).resolve().parents[1] / "assets" / "eda"
@@ -125,38 +125,6 @@ SECTION_PROMPTS = {
     3: "Al cruzar los datos con el resultado, ¿qué relaciones crees que ayudan a "
     "explicar quién es más riesgoso?",
 }
-
-_SECTION_LABELS = {1: "Panorama general", 2: "Cada dato", 3: "Relaciones"}
-_SECTION_MARK_RE = re.compile(r"【P([123])·[^】]*】\n?")
-
-
-def combine_sections(values: dict[int, str]) -> str:
-    """Une las tres respuestas en un solo texto persistible (analytics_comment)."""
-    parts: list[str] = []
-    for number in (1, 2, 3):
-        text = (values.get(number) or "").strip()
-        if text:
-            parts.append(f"【P{number}·{_SECTION_LABELS[number]}】\n{text}")
-    return "\n\n".join(parts)
-
-
-def split_sections(combined: str) -> dict[int, str]:
-    """Separa el texto combinado en las tres respuestas por capítulo."""
-    result = {1: "", 2: "", 3: ""}
-    if not combined:
-        return result
-    matches = list(_SECTION_MARK_RE.finditer(combined))
-    if not matches:
-        # Texto heredado sin marcadores: lo dejamos en la primera cajita.
-        result[1] = combined.strip()
-        return result
-    for index, match in enumerate(matches):
-        number = int(match.group(1))
-        start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(combined)
-        result[number] = combined[start:end].strip()
-    return result
-
 
 # ---------------------------------------------------------------------------
 # Estilos (solo este módulo)
@@ -382,6 +350,27 @@ div[data-testid="stForm"]:has(textarea[aria-label="Tu respuesta del capítulo"])
     box-shadow: 0 8px 20px rgba(15, 44, 107, 0.07);
     padding: 1rem 1.2rem 1.1rem;
 }
+
+.eda-chapter-progress {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+}
+.eda-chapter-pill {
+    background: #eef2fb;
+    border: 1px solid #d6def0;
+    border-radius: 999px;
+    color: #5b6b8c;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.32rem 0.85rem;
+}
+.eda-chapter-pill.active {
+    background: #0f2c6b;
+    border-color: #0f2c6b;
+    color: #ffffff;
+}
 </style>
 """
 
@@ -461,6 +450,15 @@ def _render_guiding_questions(hints: tuple[str, str, str]) -> None:
     _html(f"<div class='nb-notas'>{cards}</div>")
 
 
+def _render_chapter_progress(current_chapter: int) -> None:
+    pills = "".join(
+        f"<span class='eda-chapter-pill{' active' if number == current_chapter else ''}'>"
+        f"{number}. {SECTION_LABELS[number]}</span>"
+        for number in (1, 2, 3)
+    )
+    _html(f"<div class='eda-chapter-progress'>{pills}</div>")
+
+
 def _render_chapter(number: int) -> None:
     _html(
         f"""
@@ -499,6 +497,32 @@ def _render_figure(index: int, total: int, figure: dict, image_path: Path) -> No
         _render_glossary(glossary)
 
 
+def _render_figure_card(index: int, total: int, figure: dict, image_path: Path) -> None:
+    with st.container(border=True):
+        _render_figure(index, total, figure, image_path)
+
+
+def _render_figure_grid(indexed_figures: list[tuple[int, dict]], total: int, assets_dir: Path) -> None:
+    """Muestra las figuras de un capítulo como tarjetas de dashboard.
+
+    Una sola figura se centra en una columna angosta; dos o más se reparten en
+    una grilla de 2 columnas. Cada tarjeta tiene su propio borde y un ancho
+    contenido (la columna, no la página completa) para que el scroll siempre
+    muestre tarjetas enteras en vez de fragmentos de imagen.
+    """
+    if len(indexed_figures) == 1:
+        index, figure = indexed_figures[0]
+        _, center_col, _ = st.columns([1, 3, 1])
+        with center_col:
+            _render_figure_card(index, total, figure, assets_dir / figure["file"])
+        return
+
+    columns = st.columns(2)
+    for position, (index, figure) in enumerate(indexed_figures):
+        with columns[position % 2]:
+            _render_figure_card(index, total, figure, assets_dir / figure["file"])
+
+
 def _render_section_box(
     exercise: str,
     chapter_number: int,
@@ -534,8 +558,15 @@ def render_eda_dashboard(
     *,
     section_values: dict[int, str],
     on_save: Callable[[int, str], bool],
+    current_chapter: int,
 ) -> None:
-    """Renderiza el dashboard exploratorio para el ejercicio activo."""
+    """Renderiza el dashboard exploratorio para el ejercicio activo.
+
+    Muestra un solo capítulo a la vez (controlado por los botones globales
+    Siguiente/Anterior en sequential_flow.py) en vez de pestañas, para que esos
+    botones puedan recorrer Panorama general → Cada dato → Relaciones antes de
+    avanzar a Predicción explicable.
+    """
     _inject_dashboard_styles()
 
     if bundle.exercise == ExerciseOption.CREDIT_APPROVAL:
@@ -548,23 +579,18 @@ def render_eda_dashboard(
     total = len(figures)
     _render_hero(bundle, total)
     _render_guiding_questions(hints)
+    _render_chapter_progress(current_chapter)
 
-    chapter_tabs = st.tabs(
-        [
-            "Capítulo 01 · Panorama general",
-            "Capítulo 02 · Cada dato",
-            "Capítulo 03 · Relaciones",
-        ]
+    _render_chapter(current_chapter)
+    indexed_figures = [
+        (index, figure)
+        for index, figure in enumerate(figures, start=1)
+        if figure["chapter"] == current_chapter
+    ]
+    _render_figure_grid(indexed_figures, total, ASSETS_DIR)
+    _render_section_box(
+        bundle.exercise,
+        current_chapter,
+        section_values.get(current_chapter, ""),
+        on_save,
     )
-    for chapter_number, tab in enumerate(chapter_tabs, start=1):
-        with tab:
-            _render_chapter(chapter_number)
-            for index, figure in enumerate(figures, start=1):
-                if figure["chapter"] == chapter_number:
-                    _render_figure(index, total, figure, ASSETS_DIR / figure["file"])
-            _render_section_box(
-                bundle.exercise,
-                chapter_number,
-                section_values.get(chapter_number, ""),
-                on_save,
-            )

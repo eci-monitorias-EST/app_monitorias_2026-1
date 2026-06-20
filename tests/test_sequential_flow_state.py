@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from domain.models import ExerciseOption, ParticipantRecord
+from services.dashboard_sections import combine_sections
 from services.sequential_flow_state import (
     FlowContext,
     build_sequential_flow_state_machine,
@@ -65,6 +66,42 @@ def test_dashboard_step_requires_meaningful_analytics_comment() -> None:
             )
         ),
     ) == 6
+
+
+def test_dashboard_step_requires_all_three_section_answers() -> None:
+    machine = build_sequential_flow_state_machine()
+    dataset_comment = "Detecté ingresos altos y deuda controlada en la mayoría de casos."
+
+    only_one_section = combine_sections(
+        {1: "El conjunto está razonablemente equilibrado entre clientes buenos y malos."}
+    )
+    assert machine.next_step_id(
+        4,
+        _build_context(_build_record(dataset_comment=dataset_comment, analytics_comment=only_one_section)),
+    ) is None
+
+    all_three_sections = combine_sections(
+        {
+            1: "El conjunto está razonablemente equilibrado entre clientes buenos y malos.",
+            2: "El monto del crédito tiene varios valores atípicos altos.",
+            3: "El plazo y el monto sí se diferencian entre créditos buenos y malos.",
+        }
+    )
+    assert machine.next_step_id(
+        4,
+        _build_context(_build_record(dataset_comment=dataset_comment, analytics_comment=all_three_sections)),
+    ) == 5
+
+
+def test_derive_max_unlocked_step_requires_all_three_dashboard_sections() -> None:
+    partial_record = _build_record(
+        dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
+        analytics_comment=combine_sections(
+            {1: "El conjunto está razonablemente equilibrado entre clientes buenos y malos."}
+        ),
+    )
+
+    assert derive_max_unlocked_step(partial_record, SubmissionValidationService().has_meaningful_learning_text) == 4
 
 
 def test_prediction_step_requires_output_and_meaningful_reflection_for_current_exercise() -> None:

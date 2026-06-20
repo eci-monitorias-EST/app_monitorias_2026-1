@@ -121,7 +121,7 @@ def test_list_completed_comments_includes_predicted_meaningful_comments_without_
     assert len(comments) == 3
     assert {comment.comment_type for comment in comments} == {
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
         "prediction_reflection",
     }
     assert all(comment.participant_id == participant.participant_id for comment in comments)
@@ -185,7 +185,9 @@ def test_list_completed_comments_only_uses_requested_exercise_progress(tmp_path:
     assert comments == []
 
 
-def test_list_completed_comments_caps_cardinality_to_three_comment_types_per_exercise(tmp_path: Path) -> None:
+def test_list_completed_comments_keeps_legacy_unmarked_analytics_comment_as_one_type(tmp_path: Path) -> None:
+    """analytics_comment sin marcadores 【Pn·...】 (formato heredado) cae entera
+    en la sección 1 (Panorama), así que sigue contando como un solo comment_type."""
     store = JsonStateStore(path=tmp_path / "state.json")
     participant = store.upsert_participant("user-cardinality", {"name": "Eva"})
     store.select_exercise(participant.participant_id, "credit_approval")
@@ -205,6 +207,6 @@ def test_list_completed_comments_caps_cardinality_to_three_comment_types_per_exe
     assert len(comments) == 3
     assert {comment.comment_type for comment in comments} == {
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
         "prediction_reflection",
     }

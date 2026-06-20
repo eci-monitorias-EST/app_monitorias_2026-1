@@ -6,12 +6,26 @@ import unicodedata
 from typing import Any, Iterable, Mapping
 
 from domain.models import CommentEvent, ExerciseProgress
+from services.dashboard_sections import SECTION_LABELS, split_sections
 from services.submission_validation import SubmissionValidationService
 
 
+# El dashboard exploratorio (app/pages/eda_dashboard.py) tiene 3 preguntas
+# (una por capítulo) combinadas en ExerciseProgress.analytics_comment. Para que
+# la visualización 3D muestre un punto por pregunta respondida (en vez de un
+# solo punto para las 3 combinadas), cada capítulo tiene su propio comment_type.
+ANALYTICS_SECTION_COMMENT_TYPES: dict[int, str] = {
+    1: "analytics_comment_panorama",
+    2: "analytics_comment_cada_dato",
+    3: "analytics_comment_relaciones",
+}
+
 COMMENT_TYPE_LABELS: dict[str, str] = {
     "dataset_comment": "Dataset",
-    "analytics_comment": "Hallazgo analítico",
+    **{
+        comment_type: f"Hallazgo · {SECTION_LABELS[chapter]}"
+        for chapter, comment_type in ANALYTICS_SECTION_COMMENT_TYPES.items()
+    },
     "prediction_reflection": "Reflexión del modelo",
 }
 
@@ -39,8 +53,11 @@ def build_comment_hash(comment: str, *, is_clean: bool = False, cleaner: Comment
 
 
 def iter_comment_fields(progress: ExerciseProgress) -> Iterable[tuple[str, str]]:
-    for comment_type in COMMENT_TYPE_LABELS:
-        yield comment_type, str(getattr(progress, comment_type, "")).strip()
+    yield "dataset_comment", str(progress.dataset_comment or "").strip()
+    sections = split_sections(progress.analytics_comment)
+    for chapter, comment_type in ANALYTICS_SECTION_COMMENT_TYPES.items():
+        yield comment_type, sections[chapter].strip()
+    yield "prediction_reflection", str(progress.prediction_reflection or "").strip()
 
 
 def build_comment_event_records(

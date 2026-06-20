@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from domain.models import ExerciseProgress
 from services.comment_events import build_comment_event_records, build_comment_hash
+from services.dashboard_sections import combine_sections
 
 
 def test_build_comment_event_records_creates_one_event_per_valid_comment() -> None:
+    analytics_comment = combine_sections(
+        {
+            1: "El conjunto está razonablemente equilibrado entre clientes buenos y malos.",
+            2: "El monto del crédito tiene varios valores atípicos altos.",
+            3: "El plazo y el monto sí se diferencian entre créditos buenos y malos.",
+        }
+    )
     progress = ExerciseProgress(
         exercise="credit_approval",
         dataset_comment="El dataset sugiere ingresos altos con deuda contenida.",
-        analytics_comment="Los gráficos muestran menos riesgo cuando mejora la relación cuota-ingreso.",
+        analytics_comment=analytics_comment,
         prediction_reflection="La explicación del modelo confirmó esa tendencia.",
         updated_at="2026-04-03T10:00:00+00:00",
     )
@@ -20,10 +28,12 @@ def test_build_comment_event_records_creates_one_event_per_valid_comment() -> No
         progress=progress,
     )
 
-    assert len(events) == 3
+    assert len(events) == 5
     assert [event.comment_type for event in events] == [
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
+        "analytics_comment_cada_dato",
+        "analytics_comment_relaciones",
         "prediction_reflection",
     ]
     assert all(event.participant_id == "p-001" for event in events)

@@ -172,7 +172,7 @@ def test_save_progress_syncs_individual_comment_events_with_hashes(tmp_path: Pat
     assert len(comment_event_call[1]["rows"]) == 2
     assert {row["comment_type"] for row in comment_event_call[1]["rows"]} == {
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
     }
     assert all(len(row["comment_hash"]) == 64 for row in comment_event_call[1]["rows"])
 

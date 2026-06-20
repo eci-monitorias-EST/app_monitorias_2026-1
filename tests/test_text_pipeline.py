@@ -621,7 +621,7 @@ def test_projection_build_for_credit_approval_falls_back_to_respuestas_when_comm
     assert len(projection["points"]) == 3
     assert {point["comment_type"] for point in projection["points"]} == {
         "dataset_comment",
-        "analytics_comment",
+        "analytics_comment_panorama",
         "prediction_reflection",
     }
     assert all(point["participant_id"] == "ca-1" for point in projection["points"])

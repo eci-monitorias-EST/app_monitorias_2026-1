@@ -20,7 +20,13 @@ metadata:
 
 ## Critical Patterns
 
-- El 3D debe usar comentarios individuales (`dataset_comment`, `analytics_comment`, `prediction_reflection`) en un solo gráfico.
+- El 3D debe usar comentarios individuales en un solo gráfico. Hay 5 `comment_type`:
+  `dataset_comment`, `analytics_comment_panorama`, `analytics_comment_cada_dato`,
+  `analytics_comment_relaciones` y `prediction_reflection`. Los 3 tipos
+  `analytics_comment_*` vienen de `ExerciseProgress.analytics_comment` (un solo
+  string combinado con marcadores `【Pn·...】`) separados vía
+  `services/dashboard_sections.py::split_sections`; texto heredado sin
+  marcadores cae completo en `analytics_comment_panorama`.
 - Color = `comment_type`; resaltado del usuario actual = tamaño/símbolo/borde, no otro color distinto.
 - `comment_events` debe hacer upsert por `participant_id + exercise + comment_type`.
 - `comment_hash` cambia con el texto, pero NO debe generar una fila lógica nueva del mismo tipo.
@@ -69,7 +75,9 @@ poetry run python app_scripts_utils/sheet_snapshot_export.py \
 ## Resources
 
 - `app/services/comment_events.py`
+- `app/services/dashboard_sections.py`
 - `app/services/text_pipeline.py`
 - `app/pages/sequential_flow.py`
+- `app/pages/eda_dashboard.py`
 - `app/services/session_service.py`
 - `app_scripts_utils/google_sync_webapp.gs`

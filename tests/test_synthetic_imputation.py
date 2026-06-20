@@ -407,7 +407,7 @@ def test_chunk_synthetic_batch_and_build_seed_batch_payload_keep_traceability() 
     assert len(payload["records"][0]["comment_events"]) == 3
     assert {
         row["comment_type"] for row in payload["records"][0]["comment_events"]
-    } == {"dataset_comment", "analytics_comment", "prediction_reflection"}
+    } == {"dataset_comment", "analytics_comment_panorama", "prediction_reflection"}
     assert all(
         row["test_batch_id"] == "batch-456"
         for row in payload["records"][0]["comment_events"]

@@ -9,13 +9,18 @@ import streamlit as st
 
 from components.style import inject_global_styles
 from domain.models import ExerciseOption, ExerciseProgress, ModelEvaluationResult, ParticipantRecord
-from pages.eda_dashboard import combine_sections, render_eda_dashboard, split_sections
+from pages.eda_dashboard import render_eda_dashboard
 from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
+from services.dashboard_sections import combine_sections, split_sections
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
 from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
+
+
+_EDA_DASHBOARD_STEP = 4
+_EDA_DASHBOARD_CHAPTERS = 3
 
 
 def _html(markup: str) -> None:
@@ -177,6 +182,7 @@ class SequentialLearningFlow:
         st.session_state.setdefault("profile_continue_requested", False)
         st.session_state.setdefault("prediction_cache", None)
         st.session_state.setdefault("data_consent", None)
+        st.session_state.setdefault("eda_chapter", 1)
 
     @st.dialog("Autorización de tratamiento de datos")
     def _consent_dialog(self) -> None:
@@ -341,6 +347,7 @@ class SequentialLearningFlow:
         self._set_current_step(max(3, min(saved_step, exercise_state.max_unlocked_step)))
         st.session_state["max_unlocked_step"] = exercise_state.max_unlocked_step
         st.session_state["prediction_cache"] = None
+        st.session_state["eda_chapter"] = 1
 
     def _render_sidebar(self) -> None:
         current_step = st.session_state["current_step"]
@@ -376,15 +383,28 @@ class SequentialLearningFlow:
         back_col, next_col = st.columns(2)
         with back_col:
             if st.button("Atrás", type="primary", use_container_width=True, disabled=step == 1):
-                self._set_current_step(self.state_machine.previous_step_id(step))
+                if step == _EDA_DASHBOARD_STEP and st.session_state["eda_chapter"] > 1:
+                    st.session_state["eda_chapter"] -= 1
+                else:
+                    previous_step = self.state_machine.previous_step_id(step)
+                    if previous_step == _EDA_DASHBOARD_STEP:
+                        st.session_state["eda_chapter"] = _EDA_DASHBOARD_CHAPTERS
+                    self._set_current_step(previous_step)
                 st.rerun()
         with next_col:
             if step == self.state_machine.total_steps:
+                return
+            if step == _EDA_DASHBOARD_STEP and st.session_state["eda_chapter"] < _EDA_DASHBOARD_CHAPTERS:
+                if st.button("Siguiente", type="primary", use_container_width=True):
+                    st.session_state["eda_chapter"] += 1
+                    st.rerun()
                 return
             next_step = self.state_machine.next_step_id(step, self._build_flow_context())
             can_next = next_step is not None
             if st.button("Siguiente", type="primary", use_container_width=True, disabled=not can_next):
                 assert next_step is not None
+                if next_step == _EDA_DASHBOARD_STEP:
+                    st.session_state["eda_chapter"] = 1
                 self._set_current_step(next_step)
                 st.rerun()
             if not can_next:
@@ -688,7 +708,12 @@ class SequentialLearningFlow:
                 record.participant_id, bundle.exercise, chapter, text
             )
 
-        render_eda_dashboard(bundle, section_values=section_values, on_save=on_save)
+        render_eda_dashboard(
+            bundle,
+            section_values=section_values,
+            on_save=on_save,
+            current_chapter=st.session_state["eda_chapter"],
+        )
 
     def _coerce_input(self, descriptor, value: str):
         if descriptor.variable_type == "numeric":
@@ -844,13 +869,17 @@ class SequentialLearningFlow:
         df = pd.DataFrame(projection["points"])
         color_map = {
             "dataset_comment": "#60a5fa",
-            "analytics_comment": "#34d399",
+            "analytics_comment_panorama": "#34d399",
+            "analytics_comment_cada_dato": "#14b8a6",
+            "analytics_comment_relaciones": "#0d9488",
             "prediction_reflection": "#f59e0b",
         }
         symbol_map = {
             "dataset_comment": "circle",
-            "analytics_comment": "square",
-            "prediction_reflection": "diamond",
+            "analytics_comment_panorama": "square",
+            "analytics_comment_cada_dato": "diamond",
+            "analytics_comment_relaciones": "cross",
+            "prediction_reflection": "x",
         }
         fig = go.Figure()
         for comment_type, label in COMMENT_TYPE_LABELS.items():

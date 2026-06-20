@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from domain.models import ExerciseProgress, ParticipantRecord
+from services.dashboard_sections import split_sections
 
 
 MeaningfulTextChecker = Callable[[str], bool]
@@ -113,7 +114,7 @@ def derive_max_unlocked_step(
         return 3
     if not has_meaningful_text(progress.dataset_comment):
         return 3
-    if not has_meaningful_text(progress.analytics_comment):
+    if not _has_all_dashboard_sections(progress.analytics_comment, has_meaningful_text):
         return 4
     if not progress.prediction_output or not has_meaningful_text(progress.prediction_reflection):
         return 5
@@ -139,11 +140,18 @@ def _require_dataset_comment(context: FlowContext) -> bool:
     return context.has_meaningful_text(progress.dataset_comment)
 
 
+def _has_all_dashboard_sections(
+    analytics_comment: str, has_meaningful_text: MeaningfulTextChecker
+) -> bool:
+    sections = split_sections(analytics_comment)
+    return all(has_meaningful_text(sections[chapter]) for chapter in (1, 2, 3))
+
+
 def _require_analytics_comment(context: FlowContext) -> bool:
     progress = context.progress
     if progress is None:
         return False
-    return context.has_meaningful_text(progress.analytics_comment)
+    return _has_all_dashboard_sections(progress.analytics_comment, context.has_meaningful_text)
 
 
 def _require_prediction_reflection(context: FlowContext) -> bool:
