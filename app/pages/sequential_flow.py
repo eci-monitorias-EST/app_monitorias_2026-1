@@ -4,27 +4,160 @@ from datetime import datetime
 from typing import Callable
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from components.style import inject_global_styles
-from domain.models import ExerciseOption, ExerciseProgress, ParticipantRecord
+from domain.models import ExerciseOption, ExerciseProgress, ModelEvaluationResult, ParticipantRecord
+from pages.eda_dashboard import combine_sections, render_eda_dashboard, split_sections
 from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
-from services.profile_constraints import (
-    DEFAULT_AGE,
-    GRADE_OPTIONS,
-    MAX_AGE,
-    MIN_AGE,
-    SEX_OPTIONS,
-    clamp_age,
-    validate_profile_fields,
-)
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
 from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
+
+
+def _html(markup: str) -> None:
+    """Renderiza HTML aplanado en una sola línea.
+
+    Markdown interpreta como bloque de código cualquier línea con 4+ espacios
+    de indentación, por lo que el HTML multilínea generado con f-strings se
+    filtraría como texto crudo.
+    """
+    st.markdown(" ".join(line.strip() for line in markup.splitlines()), unsafe_allow_html=True)
+
+
+def _render_simulation_card(exercise_label: str, prediction_cache: dict) -> None:
+    favorable_labels = {"Aprobado", "Baja probabilidad de mora"}
+    label = prediction_cache["label"]
+    status_class = "good" if label in favorable_labels else "warn"
+    provider_label = prediction_cache["provider"].replace("_", " ").title()
+    probability_pct = prediction_cache["probability"] * 100
+    _html(
+        f"""
+        <div class="bankify-simulation-card">
+            <span class="bankify-simulation-tag">Resultado de la simulación</span>
+            <span class="bankify-simulation-label">Recomendación · {exercise_label}</span>
+            <p class="bankify-simulation-value">
+                <span class="bankify-status-dot {status_class}"></span>{label}
+            </p>
+            <div class="bankify-simulation-confidence-row">
+                <span>Puntaje de confianza</span>
+                <span>{prediction_cache['probability']:.1%}</span>
+            </div>
+            <div class="bankify-simulation-track">
+                <span style="width: {probability_pct:.1f}%"></span>
+            </div>
+            <span class="bankify-simulation-badge">{provider_label}</span>
+        </div>
+        """
+    )
+
+
+def _render_kpi_stack(evaluation: ModelEvaluationResult) -> None:
+    metrics = [
+        ("Exactitud", evaluation.accuracy, "De todas las predicciones, qué porcentaje fue correcto."),
+        ("Precisión", evaluation.precision, "De los casos marcados como positivos, qué porcentaje lo era de verdad."),
+        ("Exhaustividad (Recall)", evaluation.recall, "De los casos positivos reales, qué porcentaje detectó el modelo."),
+        ("F1-Score", evaluation.f1, "Balance entre precision y recall."),
+    ]
+    cards = "".join(
+        f"""
+        <div class="bankify-kpi-card">
+            <span class="bankify-kpi-label">{label}</span>
+            <span class="bankify-kpi-value">{value:.1%}</span>
+            <span class="bankify-kpi-hint">{hint}</span>
+        </div>
+        """
+        for label, value, hint in metrics
+    )
+    _html(f"<div class='bankify-kpi-stack'>{cards}</div>")
+
+
+def _render_results_socialization(evaluation: ModelEvaluationResult) -> None:
+    _html(
+        f"""
+        <div class="bankify-section-card-header">
+            <span class="bankify-section-icon">&#9670;</span>
+            <h2>Socialización de resultados</h2>
+        </div>
+        <p class="bankify-model-intro">
+            Resultados del modelo <b>{evaluation.model_name}</b> (el mismo construido en los
+            notebooks de este ejercicio) medidos sobre {evaluation.test_size:,} casos de prueba
+            que el modelo no usó para aprender.
+        </p>
+        """
+    )
+
+    negative_label, positive_label = evaluation.class_labels
+    (tn, fp), (fn, tp) = evaluation.confusion_matrix
+    _html("<p class='bankify-cm-tag'>Matriz de confusión (conjunto de prueba)</p>")
+    _html(
+        f"""
+        <div class="bankify-cm-wrapper">
+            <table class="bankify-cm-table">
+                <tr>
+                    <th></th>
+                    <th>Predicho: {negative_label}</th>
+                    <th>Predicho: {positive_label}</th>
+                </tr>
+                <tr>
+                    <th>Real: {negative_label}</th>
+                    <td class="bankify-cm-good">{tn}</td>
+                    <td class="bankify-cm-bad">{fp}</td>
+                </tr>
+                <tr>
+                    <th>Real: {positive_label}</th>
+                    <td class="bankify-cm-bad">{fn}</td>
+                    <td class="bankify-cm-good">{tp}</td>
+                </tr>
+            </table>
+        </div>
+        """
+    )
+
+    if evaluation.coefficient_importance is not None:
+        _html("<p class='bankify-cm-tag'>Coeficientes del modelo (betas)</p>")
+        top_items = list(reversed(evaluation.coefficient_importance[:8]))
+        bar_colors = ["#006bd6" if item["coefficient"] >= 0 else "#be123c" for item in top_items]
+        fig = go.Figure(
+            go.Bar(
+                x=[item["coefficient"] for item in top_items],
+                y=[item["feature"] for item in top_items],
+                orientation="h",
+                marker_color=bar_colors,
+            )
+        )
+        fig.add_vline(x=0, line_width=1, line_color="#94a3b8")
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=340,
+            xaxis_title="Coeficiente (beta) sobre la variable estandarizada",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            "Un beta positivo (azul) aumenta la probabilidad de la clase positiva; "
+            "un beta negativo (rojo) la reduce. Por ser un modelo de regresión logística, "
+            "estos coeficientes son directamente interpretables."
+        )
+    else:
+        _html("<p class='bankify-cm-tag'>Variables con mayor peso en la predicción (SHAP)</p>")
+        top_items = list(reversed(evaluation.shap_importance[:8]))
+        fig = go.Figure(
+            go.Bar(
+                x=[item["importance"] for item in top_items],
+                y=[item["feature"] for item in top_items],
+                orientation="h",
+                marker_color="#006bd6",
+            )
+        )
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=340,
+            xaxis_title="Impacto medio en la predicción (|SHAP|)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 class SequentialLearningFlow:
@@ -41,6 +174,7 @@ class SequentialLearningFlow:
         st.session_state.setdefault("access_code", "")
         st.session_state.setdefault("selected_exercise", None)
         st.session_state.setdefault("exercise_step_state", {})
+        st.session_state.setdefault("profile_continue_requested", False)
         st.session_state.setdefault("prediction_cache", None)
         st.session_state.setdefault("data_consent", None)
 
@@ -83,6 +217,21 @@ class SequentialLearningFlow:
     ) -> ExerciseProgress | None:
         return record.exercise_progress.get(exercise) if record else None
 
+    def _exercise_completion_percent(self, record: ParticipantRecord, exercise: str) -> int:
+        progress = self._exercise_progress(record, exercise)
+        if progress is None:
+            return 0
+        completed = 0
+        if self.validator.has_meaningful_learning_text(progress.dataset_comment):
+            completed += 1
+        if self.validator.has_meaningful_learning_text(progress.analytics_comment):
+            completed += 1
+        if progress.prediction_output and self.validator.has_meaningful_learning_text(progress.prediction_reflection):
+            completed += 1
+        if progress.feedback is not None or progress.completed_at:
+            completed += 1
+        return int(round((completed / 4) * 100))
+
     def _build_flow_context(self) -> FlowContext:
         return FlowContext(
             record=self._current_record(),
@@ -120,7 +269,8 @@ class SequentialLearningFlow:
         )
         render_method: Callable[[], None] = getattr(self, step.renderer_name)
         render_method()
-        self._render_navigation(step.id)
+        if step.id not in {1, 2}:
+            self._render_navigation(step.id)
 
     def _sync_flow_state_with_selected_exercise(self) -> None:
         record = self._current_record()
@@ -136,9 +286,11 @@ class SequentialLearningFlow:
             saved_current_step = int(
                 exercise_step_state.get(exercise, {}).get("current_step", base_state.current_step)
             )
-            if requested_step <= 3:
+            if not bool(st.session_state.get("profile_continue_requested", False)):
+                current_step = min(requested_step, 2)
+            elif requested_step <= 2:
                 current_step = requested_step
-            elif saved_current_step <= 3:
+            elif saved_current_step <= 2:
                 current_step = saved_current_step
             else:
                 current_step = min(saved_current_step, base_state.max_unlocked_step)
@@ -158,13 +310,15 @@ class SequentialLearningFlow:
 
     def _set_current_step(self, step_id: int) -> None:
         st.session_state["current_step"] = step_id
+        if step_id >= 3:
+            st.session_state["profile_continue_requested"] = True
         exercise = st.session_state.get("selected_exercise")
-        if exercise and step_id >= 4:
+        if exercise and step_id >= 3:
             st.session_state["exercise_step_state"][exercise] = {"current_step": step_id}
 
     def _switch_selected_exercise(self, record: ParticipantRecord, exercise: str) -> None:
         current_exercise = st.session_state.get("selected_exercise")
-        if current_exercise:
+        if current_exercise and st.session_state["current_step"] >= 3:
             self._set_current_step(st.session_state["current_step"])
 
         self.container.sessions.select_exercise(record.participant_id, exercise)
@@ -184,7 +338,7 @@ class SequentialLearningFlow:
                 exercise_state.current_step,
             )
         )
-        self._set_current_step(max(4, min(saved_step, exercise_state.max_unlocked_step)))
+        self._set_current_step(max(3, min(saved_step, exercise_state.max_unlocked_step)))
         st.session_state["max_unlocked_step"] = exercise_state.max_unlocked_step
         st.session_state["prediction_cache"] = None
 
@@ -221,7 +375,7 @@ class SequentialLearningFlow:
     def _render_navigation(self, step: int) -> None:
         back_col, next_col = st.columns(2)
         with back_col:
-            if st.button("Atrás", use_container_width=True, disabled=step == 1):
+            if st.button("Atrás", type="primary", use_container_width=True, disabled=step == 1):
                 self._set_current_step(self.state_machine.previous_step_id(step))
                 st.rerun()
         with next_col:
@@ -229,7 +383,7 @@ class SequentialLearningFlow:
                 return
             next_step = self.state_machine.next_step_id(step, self._build_flow_context())
             can_next = next_step is not None
-            if st.button("Siguiente", use_container_width=True, disabled=not can_next):
+            if st.button("Siguiente", type="primary", use_container_width=True, disabled=not can_next):
                 assert next_step is not None
                 self._set_current_step(next_step)
                 st.rerun()
@@ -242,125 +396,144 @@ class SequentialLearningFlow:
             <section class="bankify-hero">
                 <h1>Bankify Analytics Lab</h1>
                 <p>
-                    Eres parte del equipo de Ingeniería Estadística de Bankify. Tu misión es estudiar datos reales,
-                    argumentar hallazgos y explicar decisiones de modelos que ayudan a aprobar créditos y anticipar mora.
+                    Eres parte del equipo de Ingenier\u00eda Estad\u00edstica de Bankify. Tu misi\u00f3n es estudiar datos reales,
+                    argumentar hallazgos y explicar decisiones de modelos que ayudan a aprobar cr\u00e9ditos y anticipar mora.
                 </p>
                 <div>
-                    <span class="bankify-pill">Storytelling académico</span>
+                    <span class="bankify-pill">Storytelling acad\u00e9mico</span>
                     <span class="bankify-pill">Modelos explicables</span>
-                    <span class="bankify-pill">Comentarios anónimos</span>
+                    <span class="bankify-pill">Comentarios an\u00f3nimos</span>
                 </div>
             </section>
             """,
             unsafe_allow_html=True,
         )
-        col1, col2, col3 = st.columns(3)
-        for column, title, body in [
-            (col1, "Reto 1", "Determinar si un perfil crediticio merece aprobación o revisión adicional."),
-            (col2, "Reto 2", "Estimar el riesgo de mora y justificarlo con evidencia cuantitativa."),
-            (col3, "Reto 3", "Comparar tus interpretaciones con comentarios anónimos de otros estudiantes."),
-        ]:
-            with column:
-                st.markdown(
-                    f"<div class='bankify-card'><h4>{title}</h4><p>{body}</p></div>",
-                    unsafe_allow_html=True,
+        record = self._current_record()
+        if record:
+            st.success(f"Sesi\u00f3n activa: {record.public_alias}")
+            if record.access_code_display:
+                st.markdown("#### C\u00f3digo de acceso")
+                st.code(record.access_code_display)
+                st.caption("Gu\u00e1rdalo para retomar tu avance m\u00e1s adelante.")
+            return
+
+        _, form_col, _ = st.columns([1, 1.35, 1])
+        with form_col:
+            st.markdown(
+                """
+                <div class="bankify-access-heading">
+                    <h2>Acceso</h2>
+                    <p>Ingresa tus datos para comenzar</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            with st.form("welcome_access_form"):
+                nombre = st.text_input("Nombre", placeholder="Ej. Alex Rivera")
+                access_code = st.text_input(
+                    "C\u00f3digo de acceso",
+                    placeholder="Ingresa tu c\u00f3digo para retomar",
+                    help="Usa este campo solo si ya tienes una sesi\u00f3n activa.",
                 )
-        st.info(
-            "El sistema genera automáticamente un código de acceso por sesión. Guárdalo: es el mecanismo oficial para retomar tu avance."
-        )
+                st.caption("opcional si ya se tiene una sesi\u00f3n iniciada.")
+                submitted = st.form_submit_button("Comenzar experiencia", type="primary", use_container_width=True)
+
+        if not submitted:
+            return
+
+        if not nombre.strip():
+            st.warning("Ingresa tu nombre para comenzar.")
+            return
+
+        profile = {
+            "Dia": datetime.now().strftime("%Y-%m-%d"),
+            "nombre": nombre.strip(),
+        }
+        if access_code.strip():
+            recovered = self.container.sessions.recover(access_code)
+            if recovered is None:
+                st.error("No encontramos una sesi\u00f3n con ese c\u00f3digo. Verifica el c\u00f3digo e int\u00e9ntalo de nuevo.")
+                return
+            record = self.container.sessions.login_or_resume(access_code, profile)
+        else:
+            record = self.container.sessions.start_session(profile=profile)
+
+        st.session_state["participant_id"] = record.participant_id
+        st.session_state["access_code"] = record.access_code_display
+        if record.selected_exercise:
+            st.session_state["selected_exercise"] = record.selected_exercise
+        self._set_current_step(2)
+        st.rerun()
 
     def _render_data_collection(self) -> None:
         record = self._current_record()
-        st.title("Recolección de datos y recuperación de sesión")
-        st.write(
-            "Crea una nueva sesión y el sistema te entregará un código de acceso único. "
-            "Para reanudar, ingresa ese código."
+        if not record:
+            st.warning("Primero activa o recupera tu sesi\u00f3n en la bienvenida.")
+            return
+
+        profile_name = str(record.profile.get("nombre", "")).strip() or record.public_alias
+        st.markdown(
+            f"""
+            <section class="bankify-profile-hero">
+                <div>
+                    <p class="bankify-profile-kicker">Bienvenida, {profile_name}</p>
+                    <span class="bankify-code-pill">C\u00f3digo: {record.access_code_display}</span>
+                    <p class="bankify-profile-copy">
+                        Tu sesi\u00f3n est\u00e1 activa. Escoge el proceso que deseas desarrollar hoy y contin\u00faa
+                        con tu an\u00e1lisis de riesgo en el laboratorio de simulaci\u00f3n bancaria.
+                    </p>
+                </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
         )
-        if record:
-            st.success(f"Sesión recuperada: {record.public_alias}")
-            if record.access_code_display:
-                st.markdown("#### Código de acceso de esta sesión")
-                st.code(record.access_code_display)
-                st.caption("Guárdalo. Este código es la forma oficial de reanudar la sesión.")
-            st.json(record.profile)
-            return
-        if st.session_state["data_consent"] is not True:
-            self._consent_dialog()
-            if st.session_state["data_consent"] is False:
-                st.error("No autorizaste el tratamiento de datos. No es posible continuar con el registro.")
-                if st.button("Volver a mostrar autorización"):
-                    st.session_state["data_consent"] = None
-                    st.rerun()
-            else:
-                st.info("Debes autorizar el tratamiento de datos para habilitar el formulario.")
-            return
-        with st.expander("Reanudar una sesión existente", expanded=True):
-            with st.form("participant_recovery_form"):
-                access_code = st.text_input(
-                    "Código de acceso",
-                    help="Ingresa el código que recibiste al crear la sesión.",
-                )
-                recovery_submitted = st.form_submit_button("Reanudar sesión")
-            if recovery_submitted:
-                recovered = self.container.sessions.recover(access_code)
-                if recovered is None:
-                    st.error("No encontramos una sesión con ese código. Verifica el código e intentá de nuevo.")
-                    return
-                st.session_state["participant_id"] = recovered.participant_id
-                st.session_state["access_code"] = recovered.access_code_display
-                if recovered.selected_exercise:
-                    st.session_state["selected_exercise"] = recovered.selected_exercise
-                st.success(f"Sesión recuperada: {recovered.public_alias}")
-                st.rerun()
-        st.divider()
-        st.markdown("### Crear una nueva sesión")
-        with st.form("participant_login_form"):
-            nombre = st.text_input("Nombre")
-            sexo = st.selectbox("Sexo", SEX_OPTIONS)
-            colegio = st.text_input("Colegio")
-            edad = st.number_input("Edad", min_value=MIN_AGE, max_value=MAX_AGE, value=DEFAULT_AGE, step=1)
-            grado = st.selectbox("Grado o nivel", GRADE_OPTIONS)
-            interes_carrera = st.text_area("¿Qué te llamó la atención de Ingeniería Estadística?")
-            matematicas_avanzadas = st.text_area("¿Qué es lo más avanzado de matemáticas que has visto?")
-            submitted = st.form_submit_button("Crear sesión y generar código", type="primary")
-        if submitted:
-            if not all(
-                [
-                    nombre.strip(),
-                    sexo.strip(),
-                    colegio.strip(),
-                    grado.strip(),
-                    interes_carrera.strip(),
-                    matematicas_avanzadas.strip(),
-                ]
-            ):
-                st.warning("Completa todos los campos obligatorios de la sesión.")
-                return
-            try:
-                validate_profile_fields(sexo=sexo, edad=int(edad), grado=grado)
-            except ValueError as exc:
-                st.warning(str(exc))
-                return
-            record = self.container.sessions.start_session(
-                profile={
-                    "Dia": datetime.now().strftime("%Y-%m-%d"),
-                    "nombre": nombre.strip(),
-                    "sexo": sexo,
-                    "colegio": colegio.strip(),
-                    "edad": clamp_age(int(edad)),
-                    "grado": grado,
-                    "interes_carrera": interes_carrera.strip(),
-                    "matematicas_avanzadas": matematicas_avanzadas.strip(),
-                },
-            )
-            st.session_state["participant_id"] = record.participant_id
-            st.session_state["access_code"] = record.access_code_display
-            if record.selected_exercise:
-                st.session_state["selected_exercise"] = record.selected_exercise
-            st.success(
-                f"Sesión activa con alias anónimo {record.public_alias}. Guarda tu código para retomarla después."
-            )
+
+        def continue_to_dataset(exercise: str) -> None:
+            st.session_state["profile_continue_requested"] = True
+            self._switch_selected_exercise(record, exercise)
+            self._set_current_step(3)
             st.rerun()
+
+        st.markdown("### Mis Procesos")
+        header_col, history_col = st.columns([1, 1])
+        with header_col:
+            st.caption("Estado actual de tus m\u00f3dulos de an\u00e1lisis financiero.")
+            st.caption("Escoge el proceso que deseas desarrollar hoy.")
+        with history_col:
+            st.markdown("<p class='bankify-history-link'>Ver historial \u2192</p>", unsafe_allow_html=True)
+
+        options = [
+            (ExerciseOption.CREDIT_APPROVAL, "Aprobaci\u00f3n de cr\u00e9dito", "\u25a3"),
+            (ExerciseOption.DEFAULT_RISK, "Probabilidad de mora", "\u2198"),
+        ]
+        columns = st.columns(2)
+        for column, (exercise, title, icon) in zip(columns, options):
+            percent = self._exercise_completion_percent(record, exercise)
+            status = "En progreso" if percent > 0 else "Reci\u00e9n iniciado"
+            status_class = "progress" if percent > 0 else "new"
+            with column:
+                st.markdown(
+                    f"""
+                    <article class="bankify-process-card">
+                        <div class="bankify-process-top">
+                            <span class="bankify-process-icon">{icon}</span>
+                            <span class="bankify-process-status {status_class}">{status}</span>
+                        </div>
+                        <h3>{title}</h3>
+                        <div class="bankify-progress-row">
+                            <span>Progreso del m\u00f3dulo</span>
+                            <strong>{percent}%</strong>
+                        </div>
+                        <div class="bankify-progress-track">
+                            <span style="width: {percent}%"></span>
+                        </div>
+                    </article>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if st.button("Continuar", key=f"continue_{exercise}", type="primary", use_container_width=True):
+                    continue_to_dataset(exercise)
+        return
 
     def _render_exercise_choice(self) -> None:
         record = self._current_record()
@@ -400,18 +573,74 @@ class SequentialLearningFlow:
         if not record or bundle is None:
             st.warning("Selecciona un ejercicio antes de continuar.")
             return
-        st.title("Conozcamos a nuestros clientes")
-        st.caption(bundle.source_note)
-        st.dataframe(bundle.df.head(25), use_container_width=True, height=420)
-        descriptor_df = pd.DataFrame([descriptor.to_dict() for descriptor in bundle.descriptors])
-        st.markdown("### Descripción de variables")
-        st.dataframe(descriptor_df[["label", "official_name", "description", "variable_type"]], use_container_width=True)
+
+        exercise_label = ExerciseOption.LABELS[bundle.exercise]
+        st.markdown(
+            f"""
+            <section class="bankify-data-hero">
+                <div>
+                    <h1>Diccionario de Datos</h1>
+                    <span class="bankify-filter-pill">Filtrado por: {exercise_label}</span>
+                    <p>
+                        Para realizar un análisis de riesgo efectivo, es fundamental comprender el origen
+                        y la naturaleza de las variables que estamos procesando. A continuación, se detallan
+                        las variables clave para este ejercicio de simulación bancaria.
+                    </p>
+                </div>
+                <span class="bankify-book-icon">\u25f0</span>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        type_labels = {
+            "numeric": "Numérico",
+            "categorical": "Categórico",
+        }
+        table_rows = "\n".join(
+            f"""
+            <tr class="bankify-dictionary-row">
+                <td class="bankify-dictionary-cell bankify-var-name">{descriptor.label}</td>
+                <td class="bankify-dictionary-cell">{descriptor.description}</td>
+                <td class="bankify-dictionary-cell"><span class="bankify-type-badge">{type_labels.get(descriptor.variable_type, descriptor.variable_type.title())}</span></td>
+            </tr>
+            """
+            for descriptor in bundle.descriptors
+        )
+        _html(
+            f"""
+            <section class="bankify-dictionary-card">
+                <header>
+                    <span class="bankify-section-icon">◆</span>
+                    <h2>{exercise_label}</h2>
+                </header>
+                <div class="bankify-dictionary-table-wrapper">
+                    <table class="bankify-dictionary-table">
+                        <thead>
+                            <tr class="bankify-dictionary-head-row">
+                                <th class="bankify-dictionary-head">Variable</th>
+                                <th class="bankify-dictionary-head">Descripción</th>
+                                <th class="bankify-dictionary-head">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {table_rows}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            """
+        )
+
         progress = self._exercise_progress(record, bundle.exercise)
+        st.markdown("### \u00bfQu\u00e9 le sugiere el conjunto de datos?")
+        st.caption("Utiliza este espacio para anotar tus hallazgos iniciales.")
         with st.form("dataset_comment_form"):
             comment = st.text_area(
-                "¿Qué te sugiere este dataset?",
+                "\u00bfQu\u00e9 le sugiere el conjunto de datos?",
                 value=progress.dataset_comment if progress else "",
                 height=140,
+                label_visibility="collapsed",
             )
             submitted = st.form_submit_button("Guardar comentario")
         if submitted:
@@ -424,78 +653,42 @@ class SequentialLearningFlow:
             ):
                 st.success("Comentario guardado sin duplicar el registro.")
 
+    def _save_dashboard_section(
+        self, participant_id: str, exercise: str, chapter: int, text: str
+    ) -> bool:
+        validation = self.validator.validate_learning_text(
+            text, field_label=f"respuesta de la pregunta {chapter}"
+        )
+        if not validation.is_valid:
+            st.warning(validation.message)
+            return False
+        record = self.container.sessions.get_record(participant_id)
+        progress = (
+            record.exercise_progress.get(exercise) if record else None
+        )
+        sections = split_sections(progress.analytics_comment if progress else "")
+        sections[chapter] = text.strip()
+        self.container.sessions.save_progress(
+            participant_id,
+            exercise,
+            {"analytics_comment": combine_sections(sections)},
+        )
+        return True
+
     def _render_dashboard(self) -> None:
         record = self._current_record()
         bundle = self._current_bundle()
         if not record or bundle is None:
             return
-        st.title("Exploración y dashboard")
-        df = bundle.df.copy()
-        numeric_cols = df.select_dtypes(include="number").columns.tolist()
-        cat_cols = [column for column in bundle.features if column not in numeric_cols]
-        left, right = st.columns([1.2, 1.8])
-        with left:
-            target_filter = st.selectbox("Variable para gráfico principal", numeric_cols[: min(8, len(numeric_cols))])
-            cat_filter = st.selectbox("Categoría para segmentar", cat_cols[: min(8, len(cat_cols))] or [bundle.target])
-        with right:
-            st.markdown("### Instrucciones")
-            st.write(
-                "Explora distribuciones, compara segmentos y redacta un hallazgo estadístico. "
-                "Piensa cómo ese hallazgo impactaría la decisión de Bankify."
-            )
-        chart1, chart2 = st.columns(2)
-        with chart1:
-            st.plotly_chart(px.histogram(df, x=target_filter, title=f"Histograma de {target_filter}"), use_container_width=True)
-            if cat_cols:
-                st.plotly_chart(
-                    px.box(df, x=cat_filter, y=target_filter, title=f"Boxplot de {target_filter} por {cat_filter}"),
-                    use_container_width=True,
-                )
-        with chart2:
-            if cat_cols:
-                pie_counts = df[cat_filter].astype(str).value_counts().head(8).reset_index()
-                pie_counts.columns = [cat_filter, "count"]
-                st.plotly_chart(
-                    px.pie(pie_counts, names=cat_filter, values="count", title=f"Composición de {cat_filter}"),
-                    use_container_width=True,
-                )
-                st.plotly_chart(
-                    px.bar(
-                        df.groupby(cat_filter)[target_filter].mean().reset_index(),
-                        x=cat_filter,
-                        y=target_filter,
-                        title=f"Promedio de {target_filter} por {cat_filter}",
-                    ),
-                    use_container_width=True,
-                )
-        if len(numeric_cols) >= 2:
-            st.plotly_chart(
-                px.scatter(
-                    df,
-                    x=numeric_cols[0],
-                    y=numeric_cols[1],
-                    color=df[cat_filter].astype(str) if cat_cols else None,
-                    title="Dispersión exploratoria",
-                ),
-                use_container_width=True,
-            )
         progress = self._exercise_progress(record, bundle.exercise)
-        with st.form("analytics_comment_form"):
-            comment = st.text_area(
-                "¿Qué hallazgo relevante encontraste?",
-                value=progress.analytics_comment if progress else "",
-                height=140,
+        section_values = split_sections(progress.analytics_comment if progress else "")
+
+        def on_save(chapter: int, text: str) -> bool:
+            return self._save_dashboard_section(
+                record.participant_id, bundle.exercise, chapter, text
             )
-            submitted = st.form_submit_button("Guardar interpretación")
-        if submitted:
-            if self._save_validated_progress_text(
-                participant_id=record.participant_id,
-                exercise=bundle.exercise,
-                field_name="analytics_comment",
-                text=comment,
-                field_label="hallazgo analítico",
-            ):
-                st.success("Interpretación guardada.")
+
+        render_eda_dashboard(bundle, section_values=section_values, on_save=on_save)
 
     def _coerce_input(self, descriptor, value: str):
         if descriptor.variable_type == "numeric":
@@ -507,74 +700,115 @@ class SequentialLearningFlow:
         bundle = self._current_bundle()
         if not record or bundle is None:
             return
-        st.title("Predicción del modelo")
-        st.caption("La explicación pedagógica se deriva de señales locales tipo LIME/SHAP y un agente textual desacoplado.")
+        exercise_label = ExerciseOption.LABELS[bundle.exercise]
+        _html(
+            f"""
+            <section class="bankify-prediction-hero">
+                <div>
+                    <h1>Predicción explicable</h1>
+                    <p>Completa los valores del caso de prueba y obtén una predicción con explicación pedagógica basada en el modelo seleccionado.</p>
+                </div>
+                <div class="bankify-prediction-summary">
+                    <h2>Ejercicio activo</h2>
+                    <span class="bankify-metric-label">{exercise_label}</span>
+                    <p class="bankify-metric-value">Modelo guiado por notebooks</p>
+                    <p class="bankify-metric-subtitle">Usa la lógica del modelo de crédito y el árbol de decisión para mora.</p>
+                    <span class="bankify-prediction-tag">Predicción con base académica</span>
+                </div>
+            </section>
+            """
+        )
+        evaluation = self.container.model_evaluation.evaluate(bundle.exercise)
         descriptor_map = {descriptor.key: descriptor for descriptor in bundle.descriptors}
-        with st.form("prediction_form"):
-            features = {}
-            for feature_name in bundle.features:
-                descriptor = descriptor_map.get(feature_name)
-                label = descriptor.label if descriptor else feature_name
-                help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
-                series = bundle.df[feature_name]
-                is_numeric = pd.api.types.is_numeric_dtype(series)
-                if is_numeric:
-                    value = st.number_input(
-                        label,
-                        value=float(series.median()),
-                        help=help_text,
-                    )
-                    features[feature_name] = value
-                else:
-                    options = sorted(series.astype(str).unique().tolist())
-                    features[feature_name] = st.selectbox(
-                        label,
-                        options=options,
-                        help=help_text,
-                    )
-            submitted = st.form_submit_button("Ejecutar predicción", type="primary")
-        if submitted:
-            result = self.container.predictions.predict(bundle.exercise, features)
-            st.session_state["prediction_cache"] = result.to_dict()
-            self.container.sessions.save_progress(
-                record.participant_id,
-                bundle.exercise,
-                {
-                    "prediction_inputs": features,
-                    "prediction_output": result.to_dict(),
-                },
-            )
+        left_col, right_col = st.columns([3, 2])
 
-        prediction_cache = st.session_state.get("prediction_cache")
+        with left_col:
+            with st.container(border=True, key="prediction-input-card"):
+                _html(
+                    """
+                    <div class="bankify-section-card-header">
+                        <span class="bankify-section-icon">&#9638;</span>
+                        <h2>Entrada de variables</h2>
+                    </div>
+                    <p class="bankify-model-intro">Ingresa los valores que definen el perfil y la situación financiera de la persona.</p>
+                    """
+                )
+                with st.form("prediction_form"):
+                    features = {}
+                    field_cols = st.columns(2)
+                    for index, feature_name in enumerate(bundle.features):
+                        descriptor = descriptor_map.get(feature_name)
+                        label = descriptor.label if descriptor else feature_name
+                        help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
+                        series = bundle.df[feature_name]
+                        is_numeric = pd.api.types.is_numeric_dtype(series)
+                        with field_cols[index % 2]:
+                            if is_numeric:
+                                value = st.number_input(
+                                    label,
+                                    value=float(series.median()),
+                                    help=help_text,
+                                )
+                                features[feature_name] = value
+                            else:
+                                options = sorted(series.astype(str).unique().tolist())
+                                features[feature_name] = st.selectbox(
+                                    label,
+                                    options=options,
+                                    help=help_text,
+                                )
+                    submitted = st.form_submit_button("Ejecutar predicción", type="primary", use_container_width=True)
+                if submitted:
+                    result = self.container.predictions.predict(bundle.exercise, features)
+                    st.session_state["prediction_cache"] = result.to_dict()
+                    prediction_cache = result.to_dict()
+                    self.container.sessions.save_progress(
+                        record.participant_id,
+                        bundle.exercise,
+                        {
+                            "prediction_inputs": features,
+                            "prediction_output": result.to_dict(),
+                        },
+                    )
+                else:
+                    prediction_cache = st.session_state.get("prediction_cache")
+
+        with right_col:
+            if prediction_cache:
+                _render_simulation_card(exercise_label, prediction_cache)
+            else:
+                st.info("Completa los campos del caso de prueba y pulsa 'Ejecutar predicción' para ver el resultado.")
+            _render_kpi_stack(evaluation)
+
+        with st.container(border=True, key="prediction-results-card"):
+            _render_results_socialization(evaluation)
+            if prediction_cache:
+                _html(
+                    f"""
+                    <div class="bankify-result-card">
+                        <h3>Explicación pedagógica</h3>
+                        <p>{prediction_cache['pedagogical_summary']}</p>
+                    </div>
+                    """
+                )
+
         if prediction_cache:
             progress = self._exercise_progress(record, bundle.exercise)
-            st.metric("Resultado", prediction_cache["label"], f"{prediction_cache['probability']:.1%}")
-            col1, col2 = st.columns(2)
-            with col1:
-                lime_df = pd.DataFrame(prediction_cache["local_explanations"]["lime"]["items"])
-                st.plotly_chart(
-                    px.bar(lime_df.head(8), x="impact", y="feature", orientation="h", title="LIME local"),
-                    use_container_width=True,
-                )
-            with col2:
-                shap_df = pd.DataFrame(prediction_cache["local_explanations"]["shap_local"]["items"])
-                st.plotly_chart(
-                    px.bar(shap_df.head(8), x="impact", y="feature", orientation="h", title="SHAP local"),
-                    use_container_width=True,
-                )
-            global_df = pd.DataFrame(prediction_cache["global_explanations"]["shap_global"]["items"])
-            st.plotly_chart(
-                px.bar(global_df.head(10), x="importance", y="feature", orientation="h", title="SHAP global"),
-                use_container_width=True,
+            _html(
+                """
+                <div class="bankify-question-box">
+                    <span class="bankify-question-box-tag">Tu turno · Reflexión</span>
+                    <p>¿Qué entendiste de la explicación del modelo y qué variable te parece más determinante?</p>
+                </div>
+                """
             )
-            st.info(prediction_cache["pedagogical_summary"])
             with st.form("prediction_reflection_form"):
                 reflection = st.text_area(
                     "¿Qué entendiste de la explicación del modelo?",
                     value=progress.prediction_reflection if progress else "",
                     height=120,
                 )
-                submitted = st.form_submit_button("Guardar comprensión")
+                submitted = st.form_submit_button("Guardar comprensión", type="primary", use_container_width=True)
             if submitted:
                 if self._save_validated_progress_text(
                     participant_id=record.participant_id,
@@ -592,10 +826,11 @@ class SequentialLearningFlow:
             return
         st.title("Visualización 3D de comentarios")
         try:
-            projection = self.container.comments.build_projection_for_exercise(
-                bundle.exercise,
-                record.participant_id,
-            )
+            with st.spinner("Preparando visualización 3D de comentarios..."):
+                projection = self.container.comments.build_projection_for_exercise(
+                    bundle.exercise,
+                    record.participant_id,
+                )
         except RuntimeError as exc:
             st.error(str(exc))
             st.caption(
@@ -654,10 +889,6 @@ class SequentialLearningFlow:
         st.caption(
             f"Embeddings: {projection['embedding_provider']} | Reducción: {projection['reduction_provider']}"
         )
-        st.dataframe(
-            df[["public_alias", "comment_type_label", "comment", "current_user"]],
-            use_container_width=True,
-        )
 
     def _render_final_feedback(self) -> None:
         record = self._current_record()
@@ -668,12 +899,15 @@ class SequentialLearningFlow:
         st.write("Ejercicio creado por los monitores de Ingeniería Estadística.")
         progress = self._exercise_progress(record, bundle.exercise)
         previous = progress.feedback if progress else None
+        default_star_index = max(0, min(4, previous.rating - 1)) if previous else 3
+        st.write("Califica la experiencia")
+        selected_star = st.feedback("stars", default=default_star_index, key="feedback_stars")
+        rating = (selected_star if selected_star is not None else default_star_index) + 1
         with st.form("feedback_form"):
-            rating = st.slider("Califica la experiencia", min_value=0, max_value=5, value=previous.rating if previous else 4)
             summary = st.text_area("Resumen de la experiencia", value=previous.summary if previous else "")
             missing_topics = ""
             improvement_ideas = ""
-            if rating < 3:
+            if rating <= 3:
                 missing_topics = st.text_area(
                     "¿Qué faltó para que la experiencia fuera mejor?",
                     value=previous.missing_topics if previous else "",

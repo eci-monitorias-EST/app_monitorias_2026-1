@@ -1,67 +1,27 @@
-# Repository Guidelines
+# AGENTS.md
 
-## How to Use This Guide
+## Purpose
 
-- Start here for cross-project norms.
-- The `skills/` directory contains project-specific skills with detailed patterns.
-- When an action matches an Auto-invoke entry, load that skill FIRST before writing any code.
+This project is a Python 3.12 application managed with Poetry. It uses Streamlit for the UI, includes data processing and analytics workflows, and must remain testable through `pytest`.
 
----
+All contributions must prioritize readability, correctness, modularity, and maintainability.
 
-## Available Skills
+## Core Engineering Rules
 
-Use these skills for detailed patterns on-demand:
+1. Follow clean code principles at all times.
+2. Type hints are mandatory for all new or modified functions, methods, return values, and important variables.
+3. Follow PEP 8.
+4. Prefer small, focused functions over large multi-purpose blocks.
+5. Keep business logic out of Streamlit page files when possible.
+6. Use logging instead of `print`.
+7. Error handling is required for all I/O, external requests, parsing, persistence, and user-driven workflows.
+8. Every non-trivial change must include or update `pytest` coverage.
+9. Favor explicit code over clever shortcuts.
+10. Avoid hidden side effects and global mutable state.
 
-### Generic Skills (Any Project)
-| Skill | Description | URL |
-|-------|-------------|-----|
-| `pytest` | Fixtures, mocking, markers, parametrize | [SKILL.md](skills/pytest/SKILL.md) |
-| `skill-creator` | Create new AI agent skills | [SKILL.md](skills/skill-creator/SKILL.md) |
-| `skill-sync` | Sync skill metadata to AGENTS.md auto-invoke sections | [SKILL.md](skills/skill-sync/SKILL.md) |
+## Project Structure
 
-### Project-Specific Skills
-| Skill | Description | URL |
-|-------|-------------|-----|
-| `administrar-sheet-remoto` | Auditar, normalizar y administrar el Google Sheet remoto vía Apps Script, incluyendo snapshots, fix legacy y caches | [SKILL.md](skills/administrar-sheet-remoto/SKILL.md) |
-| `comentarios-3d-incrementales` | Flujo incremental de comment_events, embeddings_cache, projection_cache y gráfico 3D con separación por ejercicio | [SKILL.md](skills/comentarios-3d-incrementales/SKILL.md) |
-| `detectar-falsos-positivos` | Evaluar si un hallazgo del pipeline es falso positivo, error válido, ambiguo o ruido no material | [SKILL.md](skills/detectar-falsos-positivos/SKILL.md) |
-| `detectar-procesos-repetitivos` | Detectar patrones repetidos y proponer nuevas skills antes de seguir improvisando | [SKILL.md](skills/detectar-procesos-repetitivos/SKILL.md) |
-| `imputacion-sintetica-sheet-3d` | Poblar Sheets con datos sintéticos, validar flujo remoto y generar visualizaciones 3D HTML | [SKILL.md](skills/imputacion-sintetica-sheet-3d/SKILL.md) |
-
-### Auto-invoke Skills
-
-When performing these actions, ALWAYS invoke the corresponding skill FIRST:
-
-| Action | Skill |
-|--------|-------|
-| After creating/modifying a skill | `skill-sync` |
-| Regenerate AGENTS.md Auto-invoke tables (sync.sh) | `skill-sync` |
-| Troubleshoot why a skill is missing from AGENTS.md auto-invoke | `skill-sync` |
-| Creating new skills | `skill-creator` |
-| Working on the 3D graph, comment_events, embeddings_cache or projection_cache | `comentarios-3d-incrementales` |
-| Modifying the sequential flow or per-exercise state | `comentarios-3d-incrementales` |
-| Exporting snapshots, repairing legacy rows or managing remote Sheet caches | `administrar-sheet-remoto` |
-| Seeding synthetic data into Google Sheets or generating 3D HTML outside Streamlit | `imputacion-sintetica-sheet-3d` |
-| Validating or deleting a synthetic test batch | `imputacion-sintetica-sheet-3d` |
-| Evaluating predictions, classification results or pipeline findings for correctness | `detectar-falsos-positivos` |
-| A pattern or workflow has appeared 3 or more times in a session | `detectar-procesos-repetitivos` |
-| Writing Python tests with pytest | `pytest` |
-
----
-
-## Project Overview
-
-App de Monitorias 2026-1 — aplicación Streamlit para recolección de datos pedagógicos, análisis de comentarios con embeddings, visualización 3D y predicción de riesgo crediticio/mora.
-
-| Component | Location | Tech Stack |
-|-----------|----------|------------|
-| App Streamlit | `app/` | Python 3.12, Streamlit, Plotly |
-| Servicios | `app/services/` | scikit-learn, UMAP, sentence-transformers, LangGraph |
-| Scripts CLI | `app_scripts_utils/` | Python CLI, Google Apps Script (webapp) |
-| Tests | `tests/` | pytest |
-| Skills | `skills/` | AI agent skill files |
-
-### Project Structure
+Use the current repository structure as the default organization model:
 
 - `app/main.py`: Streamlit entrypoint only.
 - `app/navigation.py`: navigation and page registration.
@@ -73,84 +33,143 @@ App de Monitorias 2026-1 — aplicación Streamlit para recolección de datos pe
 - `tests/`: pytest test suite mirroring the behavior of `app/` modules.
 - `app_scripts_utils/`: standalone scripts and utilities; keep them isolated from app runtime concerns.
 
-### Key Architecture Decisions
+## File Organization Rules
 
-- `respuestas` es la fuente consolidada por ejercicio; `comment_events` es la fuente para el gráfico 3D.
-- `comment_hash` identifica un texto de comentario; el upsert lógico usa `participant_id + exercise + comment_type`.
-- Los caches remotos (`embeddings_cache`, `projection_cache`) son idempotentes por `comment_hash`.
-- El Apps Script actúa como API remota; si cambia, hay que redeployar antes de usar acciones nuevas.
-- `is_test_data = true` + `test_batch_id` marcan datos sintéticos; nunca mezclar con reales sin confirmar.
-- Dependency direction: `pages -> services -> domain/config`. No circular imports.
+1. Do not place business logic directly in Streamlit pages if it can live in `app/services/` or `app/domain/`.
+2. Keep `app/pages/` focused on rendering, user interaction flow, and calling services.
+3. Put reusable data transformations, analytics logic, and model orchestration in `app/services/`.
+4. Put schemas, typed containers, and domain-specific models in `app/domain/`.
+5. Put configuration readers, environment lookups, and secrets access in `app/config/`.
+6. Add tests under `tests/` using filenames that mirror the module under test, such as `tests/test_storage.py`.
+7. If a module grows beyond a single responsibility, split it rather than adding unrelated helpers.
+8. Avoid circular imports by preserving a clear direction: `pages -> services -> domain/config`.
 
----
+## Naming Conventions
 
-## Core Engineering Rules
+1. Use `snake_case` for variables, functions, and module names.
+2. Use `PascalCase` for classes, dataclasses, and domain models.
+3. Use `UPPER_SNAKE_CASE` for constants.
+4. Name functions with clear verbs, such as `load_credit_approval`, `upsert_feedback`, or `build_navigation`.
+5. Name boolean variables with intent, such as `is_valid`, `has_feedback`, or `demo_mode`.
+6. Avoid vague names like `data`, `info`, `obj`, `temp`, or `helper` unless the scope is extremely small and obvious.
+7. Test names must describe behavior, not implementation details.
 
-1. Follow clean code principles at all times.
-2. Type hints are mandatory for all new or modified functions, methods, return values, and important variables.
-3. Follow PEP 8.
-4. Prefer small, focused functions over large multi-purpose blocks.
-5. Keep business logic out of Streamlit page files — place it in `app/services/` or `app/domain/`.
-6. Use `logging` instead of `print`.
-7. Error handling is required for all I/O, external requests, parsing, persistence, and user-driven workflows.
-8. Every non-trivial change must include or update `pytest` coverage.
-9. Favor explicit code over clever shortcuts.
-10. Avoid hidden side effects and global mutable state.
+## Type Hints
 
-### Naming Conventions
+1. All new and modified code must include complete type hints.
+2. Prefer concrete types from `collections.abc`, `typing`, and project models.
+3. Use `from __future__ import annotations` where it improves forward references and consistency.
+4. Do not leave public function signatures untyped.
+5. Use domain models or typed structures instead of untyped dictionaries when the shape is stable.
 
-- `snake_case` for variables, functions, and module names.
-- `PascalCase` for classes, dataclasses, and domain models.
-- `UPPER_SNAKE_CASE` for constants.
-- Name functions with clear verbs: `load_credit_approval`, `upsert_feedback`, `build_navigation`.
-- Name booleans with intent: `is_valid`, `has_feedback`, `demo_mode`.
-- Avoid vague names like `data`, `info`, `obj`, `temp`, or `helper`.
-- Test names must describe behavior, not implementation details.
+## Logging
 
-### Streamlit Guidelines
+1. Never use `print` for application behavior, debugging, or operational tracing.
+2. Use the standard `logging` module.
+3. Log meaningful events at appropriate levels:
+   - `debug` for diagnostic details
+   - `info` for normal workflow milestones
+   - `warning` for recoverable issues
+   - `error` or `exception` for failures
+4. Include actionable context in log messages, but never log secrets, tokens, or sensitive user data.
 
-- Keep Streamlit pages thin and readable.
-- Move transformation, analytics, and persistence logic into services.
-- Avoid duplicating widget or state logic across pages; extract into `app/components/` or `app/services/`.
-- Use Streamlit state intentionally and keep state transitions explicit.
-- Validate user input before passing it to analytics or persistence layers.
+## Error Handling
 
-### Error Handling
+1. Wrap file I/O, network calls, serialization, parsing, and persistence operations with explicit error handling.
+2. Catch specific exceptions instead of broad `except Exception` whenever possible.
+3. Fail with clear, actionable messages.
+4. Surface user-safe messages in Streamlit pages and log technical details separately.
+5. Do not silently swallow exceptions.
+6. When recovery is possible, document the fallback behavior in code.
 
-- Wrap file I/O, network calls, serialization, parsing, and persistence with explicit error handling.
-- Catch specific exceptions instead of broad `except Exception` whenever possible.
-- Surface user-safe messages in Streamlit pages; log technical details separately.
-- Do not silently swallow exceptions.
+## Streamlit Guidelines
 
----
+1. Keep Streamlit pages thin and readable.
+2. Move transformation logic, analytics calculations, and persistence logic into services.
+3. Avoid duplicating widget, state, or layout logic across pages; extract reusable pieces into `app/components/` or `app/services/`.
+4. Use Streamlit state intentionally and keep state transitions explicit.
+5. Validate user input before passing it to analytics or persistence layers.
 
-## Python Development
+## Data Processing And Analytics Guidelines
 
-```bash
-# Setup
-poetry install --with dev
+1. Keep data processing steps deterministic and testable.
+2. Separate raw data loading, transformation, modeling, and presentation responsibilities.
+3. Prefer pure functions for transformations where possible.
+4. Document assumptions about schemas, columns, missing values, and model inputs.
+5. Validate inputs before running analytics or prediction workflows.
+6. When using external data or models, handle missing files, malformed inputs, and unavailable resources explicitly.
 
-# Run app
-poetry run streamlit run app/main.py
+## Testing Rules
 
-# Tests
-poetry run pytest
-poetry run pytest tests/test_comment_events.py  # test file específico
+1. Use `pytest` for all tests.
+2. Every non-trivial behavior change must be covered by tests.
+3. Add unit tests for service and domain logic first.
+4. Test error paths, not only happy paths.
+5. Use fixtures for reusable setup.
+6. Keep tests deterministic and isolated from real external systems unless explicitly intended.
+7. Prefer small targeted tests over broad end-to-end tests when validating service logic.
+8. Use commands such as `poetry run pytest` to validate changes.
 
-# Linting
-poetry run black .
-```
+## Dependency And Tooling Practices
 
----
+1. Manage dependencies with Poetry only.
+2. Run project commands through Poetry, for example:
+   - `poetry install`
+   - `poetry run streamlit run app/main.py`
+   - `poetry run pytest`
+3. Do not introduce new dependencies without a clear justification.
+4. Keep dependencies minimal and relevant to the app's analytics and Streamlit scope.
 
-## Commit & Pull Request Guidelines
+## Git Practices
 
-Follow conventional-commit style: `<type>[scope]: <description>`
+1. Make focused commits with a single clear purpose.
+2. Use descriptive commit messages in the imperative mood.
+3. Do not mix refactors, behavior changes, and test-only changes in a single commit unless they are tightly coupled.
+4. Run relevant tests before opening a pull request.
+5. Keep branches small and reviewable.
+6. Never commit secrets, tokens, datasets with sensitive data, or local environment files.
+7. Rebase or merge carefully to avoid losing concurrent work.
 
-**Types:** `feat`, `fix`, `docs`, `chore`, `perf`, `refactor`, `style`, `test`
+## Code Review Guidelines
 
-Before creating a PR:
-1. Run all relevant tests: `poetry run pytest`
-2. Verify no synthetic data (`is_test_data = true`) was left in production sheets
-3. Link screenshots for UI changes
-4. Never commit secrets, tokens, datasets with sensitive data, or local environment files
+Reviewers and contributors should verify the following:
+
+1. The code follows PEP 8 and existing project structure.
+2. Type hints are complete and accurate.
+3. Business logic is not unnecessarily embedded in Streamlit UI files.
+4. Logging is used appropriately and `print` is absent.
+5. Error handling is explicit and user-safe.
+6. The change is modular and respects single-responsibility boundaries.
+7. Tests cover the new behavior and relevant failure cases.
+8. Naming is clear and consistent.
+9. The code avoids duplication and unnecessary abstraction.
+10. The change does not introduce hidden state, brittle coupling, or unclear side effects.
+
+## Definition Of Done
+
+A change is only considered complete when:
+
+1. The code is clean, modular, typed, and PEP 8 compliant.
+2. Logging and error handling are in place where relevant.
+3. Tests were added or updated with `pytest`.
+4. The implementation fits the repository structure.
+5. The change is understandable without extra explanation.
+
+## Local Skills
+
+| Skill | Description | Location |
+| --- | --- | --- |
+| `administrar-sheet-remoto` | Audita, normaliza y administra el Google Sheet remoto vía Apps Script, incluyendo snapshots, fix legacy y caches. | `skills/administrar-sheet-remoto/SKILL.md` |
+| `comentarios-3d-incrementales` | Implementa y mantiene el flujo incremental del gráfico 3D con comment_events, caches y separación por ejercicio. | `skills/comentarios-3d-incrementales/SKILL.md` |
+| `imputacion-sintetica-sheet-3d` | Orquesta lotes sintéticos en Google Sheets/Apps Script, render 3D HTML y borrado controlado por batch. | `skills/imputacion-sintetica-sheet-3d/SKILL.md` |
+| `detectar-procesos-repetitivos` | Detecta procesos repetidos y obliga a proponer una skill reusable antes de seguir improvisando. | `skills/detectar-procesos-repetitivos/SKILL.md` |
+| `detectar-falsos-positivos` | Evalúa si un hallazgo corresponde a un falso positivo, un error válido, un caso ambiguo o ruido no material. | `skills/detectar-falsos-positivos/SKILL.md` |
+
+## Local Skill Usage
+
+1. Usa `detectar-procesos-repetitivos` cuando una misma secuencia de análisis, refactor, validación o sincronización aparezca repetida varias veces en la sesión.
+2. Usa `detectar-falsos-positivos` cuando un hallazgo, clasificación, sync remoto o validación pueda estar marcando éxito/error con señales ambiguas o contradictorias.
+3. Usa `imputacion-sintetica-sheet-3d` cuando haya que sembrar datos sintéticos en Google Sheets, renderizar HTML 3D con MiniLM+UMAP o preparar borrado seguro por `test_batch_id`.
+4. Usa `administrar-sheet-remoto` cuando haya que exportar snapshots, corregir filas legacy, poblar caches o reconstruir proyecciones del Sheet sin depender de la UI de Google Sheets.
+5. Usa `comentarios-3d-incrementales` cuando haya que tocar `comment_events`, el gráfico 3D, el resaltado del usuario actual o la separación por ejercicio en comentarios.
+6. Si una skill local resuelve mejor el contexto del repo que una instrucción genérica, priorízala antes de improvisar pasos manuales repetidos.

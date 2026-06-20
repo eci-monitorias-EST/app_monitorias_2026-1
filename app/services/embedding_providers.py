@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Protocol
 
 import numpy as np
@@ -24,6 +25,13 @@ class EmbeddingProvider(Protocol):
         ...
 
 
+@lru_cache(maxsize=4)
+def _load_sentence_transformer(model_name: str, cache_folder: str | None) -> Any:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+
+    return SentenceTransformer(model_name, cache_folder=cache_folder)
+
+
 class MiniLMEmbeddingProvider:
     def __init__(
         self,
@@ -36,14 +44,14 @@ class MiniLMEmbeddingProvider:
 
     def encode(self, texts: list[str]) -> EmbeddingResult:
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore
+            model = _load_sentence_transformer(self.model_name, self.cache_folder)
         except Exception as exc:
             raise RuntimeError(
-                "No se pudo importar sentence-transformers. Instala la dependencia del proyecto para usar MiniLM."
+                "No se pudo importar o cargar sentence-transformers. "
+                "Verifica la dependencia y el modelo configurado para usar MiniLM."
             ) from exc
 
         try:
-            model = SentenceTransformer(self.model_name, cache_folder=self.cache_folder)
             matrix = np.asarray(
                 model.encode(
                     texts,
@@ -55,7 +63,8 @@ class MiniLMEmbeddingProvider:
             )
         except Exception as exc:
             raise RuntimeError(
-                "No se pudo cargar o ejecutar el modelo MiniLM configurado. Verifica el nombre del modelo y la instalación local."
+                "No se pudo ejecutar el modelo MiniLM configurado. "
+                "Verifica el nombre del modelo y la instalación local."
             ) from exc
 
         return EmbeddingResult(matrix=matrix, provider=MINILM_PROVIDER_NAME)

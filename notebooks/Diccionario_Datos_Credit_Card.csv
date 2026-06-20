@@ -1,0 +1,11 @@
+﻿Variable,Tipo de Dato,Descripción,Valores Permitidos
+ID,Identificador,ID único de registro para cada cliente.,Enteros positivos únicos
+LIMIT_BAL,Numérico Continuo,Límite de crédito otorgado (en NT$). Incluye crédito individual y suplementario familiar.,Valores numéricos positivos
+SEX,Categórico Nominal,Género del titular de la cuenta de crédito.,"1 = Masculino, 2 = Femenino"
+EDUCATION,Categórico Ordinal,Nivel educativo máximo alcanzado por el cliente.,"1 = Posgrado, 2 = Univ., 3 = Bachillerato, 4 = Otros"
+MARRIAGE,Categórico Nominal,Estado civil actual del cliente.,"1 = Casado, 2 = Soltero, 3 = Otros / Div."
+AGE,Numérico Discreto,Edad biológica del cliente en años cumplidos.,Enteros positivos (Ej. 21 - 80)
+PAY_0 a PAY_6,Categórico Ordinal,Historial del estado de pago mensual (Sept. = PAY_0 retrocediendo a Abril = PAY_6).,"-2 = Sin consumo, -1 = Pago al día, 0 = Rotativo, 1 a 9 = Meses de atraso"
+BILL_AMT1 a BILL_AMT6,Numérico Continuo,Monto del estado de cuenta facturado al cliente (en NT$).,Valores numéricos (pueden ser negativos si hay saldo a favor)
+PAY_AMT1 a PAY_AMT6,Numérico Continuo,Monto del abono anterior realizado por el cliente (en NT$).,Valores numéricos positivos (>= 0)
+DEFAULT,Categórico Nominal (Booleano),Variable Objetivo: Indicador de si el cliente incurrirá en impago el mes siguiente.,"0 = No default, 1 = Sí default"

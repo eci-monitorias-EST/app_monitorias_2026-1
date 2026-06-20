@@ -53,6 +53,14 @@ class ExerciseProgress:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ExerciseProgress":
+        payload = dict(payload)
+        feedback_payload = payload.get("feedback")
+        if isinstance(feedback_payload, dict):
+            payload["feedback"] = FeedbackRecord(**feedback_payload)
+        return cls(**payload)
+
 
 @dataclass
 class FeedbackRecord:
@@ -113,7 +121,7 @@ class ParticipantRecord:
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "ParticipantRecord":
         progress = {
-            key: ExerciseProgress(**value)
+            key: ExerciseProgress.from_dict(value)
             for key, value in payload.get("exercise_progress", {}).items()
         }
         feedback_payload = payload.get("feedback")
@@ -178,6 +186,24 @@ class CommentEvent:
 
     def logical_key(self) -> tuple[str, str, str]:
         return (self.participant_id, self.exercise, self.comment_type)
+
+
+@dataclass
+class ModelEvaluationResult:
+    exercise: str
+    model_name: str
+    accuracy: float
+    precision: float
+    recall: float
+    f1: float
+    confusion_matrix: list[list[int]]
+    class_labels: tuple[str, str]
+    shap_importance: list[dict[str, Any]]
+    test_size: int
+    coefficient_importance: list[dict[str, Any]] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass

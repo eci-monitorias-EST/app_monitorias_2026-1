@@ -161,6 +161,37 @@ Para que el gráfico 3D sea rápido y siga siendo gratis en Streamlit Cloud, el 
 
 La capa de configuración debe separar secretos de parámetros no sensibles.
 
+### Docker runtime with SQLite persistence
+
+The Docker runtime starts the Streamlit app on port `8501` and uses SQLite as the
+primary local persistence store. Run it with:
+
+```bash
+docker compose up --build
+```
+
+The compose service sets the non-secret runtime contract explicitly:
+
+```bash
+PERSISTENCE_STORE=sqlite
+SQLITE_PATH=/app/data/processed/app.db
+STREAMLIT_PORT=8501
+```
+
+`compose.yaml` mounts the named volume `monitorias_sqlite_data` at
+`/app/data/processed`, so the SQLite file survives container recreation. This
+SQLite deployment supports a **single writable replica**. Do not scale the app to
+multiple writable containers against the same SQLite file; use a server database
+before running more than one writable replica.
+
+| Runtime concern | Default in Docker | Notes |
+|---|---|---|
+| Port binding | `8501` | The app owns the Streamlit listener; Compose only maps the host port. |
+| Persistence store | `PERSISTENCE_STORE=sqlite` | Normal app flows do not require Apps Script credentials. |
+| SQLite path | `SQLITE_PATH=/app/data/processed/app.db` | Backed by the `monitorias_sqlite_data` volume. |
+| JSON fallback | Explicit opt-in only | Use `PERSISTENCE_STORE=json` outside the default Docker path if rollback is needed. |
+| Apps Script export | Optional | Apps Script is not the primary backing service in SQLite mode. |
+
 Valores esperados:
 
 - `google_script_url`: URL del Web App de Apps Script.
@@ -436,3 +467,32 @@ Usar `DVC` para los datasets evita que los archivos grandes queden copiados manu
 - UCI Machine Learning Repository: Statlog (German Credit Data)
 - Streamlit: https://streamlit.io/
 - DVC: https://dvc.org/
+
+[project]
+name = "monitorias"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "RamiroSeb",email = "juanrayala12@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "streamlit (>=1.55.0,<2.0.0)",
+    "pandas (>=2.2,<3.0)",
+    "plotly (>=6.6.0,<7.0.0)",
+    "dvc (>=3.67.0,<4.0.0)",
+    "requests (>=2.32.0,<3.0.0)"
+]
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)",
+    "black (>=26.3.1,<27.0.0)"
+]
