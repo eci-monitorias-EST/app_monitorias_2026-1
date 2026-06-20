@@ -826,10 +826,11 @@ class SequentialLearningFlow:
             return
         st.title("Visualización 3D de comentarios")
         try:
-            projection = self.container.comments.build_projection_for_exercise(
-                bundle.exercise,
-                record.participant_id,
-            )
+            with st.spinner("Preparando visualización 3D de comentarios..."):
+                projection = self.container.comments.build_projection_for_exercise(
+                    bundle.exercise,
+                    record.participant_id,
+                )
         except RuntimeError as exc:
             st.error(str(exc))
             st.caption(

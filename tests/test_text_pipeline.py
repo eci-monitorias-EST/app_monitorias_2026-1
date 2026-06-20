@@ -8,7 +8,11 @@ import numpy as np
 import pytest
 
 from domain.models import CompletedComment
-from services.embedding_providers import ConfigurableEmbeddingProvider, EmbeddingResult
+from services.embedding_providers import (
+    ConfigurableEmbeddingProvider,
+    EmbeddingResult,
+    _load_sentence_transformer,
+)
 from services.text_pipeline import (
     CommentAnalyticsService,
     DimensionalityReducer,
@@ -308,6 +312,7 @@ def test_reducer_uses_umap_for_normal_sample_sizes(monkeypatch: pytest.MonkeyPat
 def test_configurable_provider_uses_minilm_when_available(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _load_sentence_transformer.cache_clear()
     provider = ConfigurableEmbeddingProvider(
         {
             "embedding_provider": "minilm",
@@ -345,6 +350,49 @@ def test_configurable_provider_uses_minilm_when_available(
     assert result.provider == "sentence_transformers_minilm"
     assert result.matrix.shape == (1, 3)
 
+
+def test_minilm_provider_reuses_loaded_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _load_sentence_transformer.cache_clear()
+    provider = ConfigurableEmbeddingProvider(
+        {
+            "embedding_provider": "minilm",
+            "minilm_model_name": "cached-minilm",
+        }
+    )
+    fake_module = ModuleType("sentence_transformers")
+    load_count = 0
+
+    class _FakeSentenceTransformer:
+        def __init__(self, model_name: str, cache_folder: str | None = None) -> None:
+            nonlocal load_count
+            load_count += 1
+            self.model_name = model_name
+            self.cache_folder = cache_folder
+
+        def encode(
+            self,
+            texts: list[str],
+            *,
+            convert_to_numpy: bool,
+            show_progress_bar: bool,
+            normalize_embeddings: bool,
+        ) -> np.ndarray:
+            del convert_to_numpy, show_progress_bar, normalize_embeddings
+            assert self.model_name == "cached-minilm"
+            assert self.cache_folder is None
+            return np.array([[float(len(text))] for text in texts])
+
+    setattr(fake_module, "SentenceTransformer", _FakeSentenceTransformer)
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake_module)
+
+    first_result = provider.encode(["uno"])
+    second_result = provider.encode(["dos"])
+
+    assert load_count == 1
+    assert first_result.matrix.tolist() == [[3.0]]
+    assert second_result.matrix.tolist() == [[3.0]]
 
 def test_configurable_provider_falls_back_to_fasttext_when_minilm_fails(
     monkeypatch: pytest.MonkeyPatch,
