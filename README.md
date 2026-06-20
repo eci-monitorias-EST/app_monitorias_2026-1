@@ -161,6 +161,37 @@ Para que el gráfico 3D sea rápido y siga siendo gratis en Streamlit Cloud, el 
 
 La capa de configuración debe separar secretos de parámetros no sensibles.
 
+### Docker runtime with SQLite persistence
+
+The Docker runtime starts the Streamlit app on port `8501` and uses SQLite as the
+primary local persistence store. Run it with:
+
+```bash
+docker compose up --build
+```
+
+The compose service sets the non-secret runtime contract explicitly:
+
+```bash
+PERSISTENCE_STORE=sqlite
+SQLITE_PATH=/app/data/processed/app.db
+STREAMLIT_PORT=8501
+```
+
+`compose.yaml` mounts the named volume `monitorias_sqlite_data` at
+`/app/data/processed`, so the SQLite file survives container recreation. This
+SQLite deployment supports a **single writable replica**. Do not scale the app to
+multiple writable containers against the same SQLite file; use a server database
+before running more than one writable replica.
+
+| Runtime concern | Default in Docker | Notes |
+|---|---|---|
+| Port binding | `8501` | The app owns the Streamlit listener; Compose only maps the host port. |
+| Persistence store | `PERSISTENCE_STORE=sqlite` | Normal app flows do not require Apps Script credentials. |
+| SQLite path | `SQLITE_PATH=/app/data/processed/app.db` | Backed by the `monitorias_sqlite_data` volume. |
+| JSON fallback | Explicit opt-in only | Use `PERSISTENCE_STORE=json` outside the default Docker path if rollback is needed. |
+| Apps Script export | Optional | Apps Script is not the primary backing service in SQLite mode. |
+
 Valores esperados:
 
 - `google_script_url`: URL del Web App de Apps Script.

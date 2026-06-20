@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    environment:
+      APP_CONFIG_YAML: app/config/app.yaml
+      PERSISTENCE_STORE: sqlite
+      SQLITE_PATH: /app/data/processed/app.db
+      STREAMLIT_SERVER_PORT: "8501"
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - monitorias_sqlite_data:/app/data/processed
+
+volumes:
+  monitorias_sqlite_data:
