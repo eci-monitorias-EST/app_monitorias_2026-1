@@ -192,6 +192,7 @@ class ModelEvaluationResult:
     class_labels: tuple[str, str]
     shap_importance: list[dict[str, Any]]
     test_size: int
+    coefficient_importance: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

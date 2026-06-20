@@ -28,24 +28,38 @@ def _html(markup: str) -> None:
     st.markdown(" ".join(line.strip() for line in markup.splitlines()), unsafe_allow_html=True)
 
 
-def _render_model_performance(evaluation: ModelEvaluationResult) -> None:
+def _render_simulation_card(exercise_label: str, prediction_cache: dict) -> None:
+    favorable_labels = {"Aprobado", "Baja probabilidad de mora"}
+    label = prediction_cache["label"]
+    status_class = "good" if label in favorable_labels else "warn"
+    provider_label = prediction_cache["provider"].replace("_", " ").title()
+    probability_pct = prediction_cache["probability"] * 100
     _html(
         f"""
-        <section class="bankify-model-performance">
-            <h2>Desempeño del modelo</h2>
-            <p class="bankify-model-intro">
-                Resultados del modelo <b>{evaluation.model_name}</b> (el mismo construido en los
-                notebooks de este ejercicio) medidos sobre {evaluation.test_size:,} casos de prueba
-                que el modelo no usó para aprender.
+        <div class="bankify-simulation-card">
+            <span class="bankify-simulation-tag">Resultado de la simulación</span>
+            <span class="bankify-simulation-label">Recomendación · {exercise_label}</span>
+            <p class="bankify-simulation-value">
+                <span class="bankify-status-dot {status_class}"></span>{label}
             </p>
-        </section>
+            <div class="bankify-simulation-confidence-row">
+                <span>Puntaje de confianza</span>
+                <span>{prediction_cache['probability']:.1%}</span>
+            </div>
+            <div class="bankify-simulation-track">
+                <span style="width: {probability_pct:.1f}%"></span>
+            </div>
+            <span class="bankify-simulation-badge">{provider_label}</span>
+        </div>
         """
     )
 
+
+def _render_kpi_stack(evaluation: ModelEvaluationResult) -> None:
     metrics = [
-        ("Accuracy", evaluation.accuracy, "De todas las predicciones, qué porcentaje fue correcto."),
-        ("Precision", evaluation.precision, "De los casos marcados como positivos, qué porcentaje lo era de verdad."),
-        ("Recall", evaluation.recall, "De los casos positivos reales, qué porcentaje detectó el modelo."),
+        ("Exactitud", evaluation.accuracy, "De todas las predicciones, qué porcentaje fue correcto."),
+        ("Precisión", evaluation.precision, "De los casos marcados como positivos, qué porcentaje lo era de verdad."),
+        ("Exhaustividad (Recall)", evaluation.recall, "De los casos positivos reales, qué porcentaje detectó el modelo."),
         ("F1-Score", evaluation.f1, "Balance entre precision y recall."),
     ]
     cards = "".join(
@@ -58,7 +72,23 @@ def _render_model_performance(evaluation: ModelEvaluationResult) -> None:
         """
         for label, value, hint in metrics
     )
-    _html(f"<div class='bankify-kpi-grid'>{cards}</div>")
+    _html(f"<div class='bankify-kpi-stack'>{cards}</div>")
+
+
+def _render_results_socialization(evaluation: ModelEvaluationResult) -> None:
+    _html(
+        f"""
+        <div class="bankify-section-card-header">
+            <span class="bankify-section-icon">&#9670;</span>
+            <h2>Socialización de resultados</h2>
+        </div>
+        <p class="bankify-model-intro">
+            Resultados del modelo <b>{evaluation.model_name}</b> (el mismo construido en los
+            notebooks de este ejercicio) medidos sobre {evaluation.test_size:,} casos de prueba
+            que el modelo no usó para aprender.
+        </p>
+        """
+    )
 
     negative_label, positive_label = evaluation.class_labels
     (tn, fp), (fn, tp) = evaluation.confusion_matrix
@@ -87,22 +117,47 @@ def _render_model_performance(evaluation: ModelEvaluationResult) -> None:
         """
     )
 
-    _html("<p class='bankify-cm-tag'>Variables con mayor peso en la predicción (SHAP)</p>")
-    top_items = list(reversed(evaluation.shap_importance[:8]))
-    fig = go.Figure(
-        go.Bar(
-            x=[item["importance"] for item in top_items],
-            y=[item["feature"] for item in top_items],
-            orientation="h",
-            marker_color="#006bd6",
+    if evaluation.coefficient_importance is not None:
+        _html("<p class='bankify-cm-tag'>Coeficientes del modelo (betas)</p>")
+        top_items = list(reversed(evaluation.coefficient_importance[:8]))
+        bar_colors = ["#006bd6" if item["coefficient"] >= 0 else "#be123c" for item in top_items]
+        fig = go.Figure(
+            go.Bar(
+                x=[item["coefficient"] for item in top_items],
+                y=[item["feature"] for item in top_items],
+                orientation="h",
+                marker_color=bar_colors,
+            )
         )
-    )
-    fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=340,
-        xaxis_title="Impacto medio en la predicción (|SHAP|)",
-    )
-    st.plotly_chart(fig, use_container_width=True)
+        fig.add_vline(x=0, line_width=1, line_color="#94a3b8")
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=340,
+            xaxis_title="Coeficiente (beta) sobre la variable estandarizada",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            "Un beta positivo (azul) aumenta la probabilidad de la clase positiva; "
+            "un beta negativo (rojo) la reduce. Por ser un modelo de regresión logística, "
+            "estos coeficientes son directamente interpretables."
+        )
+    else:
+        _html("<p class='bankify-cm-tag'>Variables con mayor peso en la predicción (SHAP)</p>")
+        top_items = list(reversed(evaluation.shap_importance[:8]))
+        fig = go.Figure(
+            go.Bar(
+                x=[item["importance"] for item in top_items],
+                y=[item["feature"] for item in top_items],
+                orientation="h",
+                marker_color="#006bd6",
+            )
+        )
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=340,
+            xaxis_title="Impacto medio en la predicción (|SHAP|)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 class SequentialLearningFlow:
@@ -661,87 +716,86 @@ class SequentialLearningFlow:
                     <span class="bankify-prediction-tag">Predicción con base académica</span>
                 </div>
             </section>
-            <section class="bankify-prediction-panel">
-                <div class="bankify-prediction-panel-left">
-                    <h2>Entradas del caso</h2>
-                    <p>Ingresa los valores que definen el perfil y la situación financiera de la persona.</p>
-                </div>
-                <div class="bankify-prediction-panel-right">
-                    <h2>Resultados</h2>
-                    <p>La predicción y la explicación se mostrarán aquí después de ejecutar el modelo.</p>
-                </div>
-            </section>
             """
         )
+        evaluation = self.container.model_evaluation.evaluate(bundle.exercise)
         descriptor_map = {descriptor.key: descriptor for descriptor in bundle.descriptors}
-        left_col, right_col = st.columns([2, 1])
+        left_col, right_col = st.columns([3, 2])
 
         with left_col:
-            with st.form("prediction_form"):
-                features = {}
-                for feature_name in bundle.features:
-                    descriptor = descriptor_map.get(feature_name)
-                    label = descriptor.label if descriptor else feature_name
-                    help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
-                    series = bundle.df[feature_name]
-                    is_numeric = pd.api.types.is_numeric_dtype(series)
-                    if is_numeric:
-                        value = st.number_input(
-                            label,
-                            value=float(series.median()),
-                            help=help_text,
-                        )
-                        features[feature_name] = value
-                    else:
-                        options = sorted(series.astype(str).unique().tolist())
-                        features[feature_name] = st.selectbox(
-                            label,
-                            options=options,
-                            help=help_text,
-                        )
-                submitted = st.form_submit_button("Ejecutar predicción", type="primary", use_container_width=True)
-            if submitted:
-                result = self.container.predictions.predict(bundle.exercise, features)
-                st.session_state["prediction_cache"] = result.to_dict()
-                prediction_cache = result.to_dict()
-                self.container.sessions.save_progress(
-                    record.participant_id,
-                    bundle.exercise,
-                    {
-                        "prediction_inputs": features,
-                        "prediction_output": result.to_dict(),
-                    },
+            with st.container(border=True, key="prediction-input-card"):
+                _html(
+                    """
+                    <div class="bankify-section-card-header">
+                        <span class="bankify-section-icon">&#9638;</span>
+                        <h2>Entrada de variables</h2>
+                    </div>
+                    <p class="bankify-model-intro">Ingresa los valores que definen el perfil y la situación financiera de la persona.</p>
+                    """
                 )
-            else:
-                prediction_cache = st.session_state.get("prediction_cache")
+                with st.form("prediction_form"):
+                    features = {}
+                    field_cols = st.columns(2)
+                    for index, feature_name in enumerate(bundle.features):
+                        descriptor = descriptor_map.get(feature_name)
+                        label = descriptor.label if descriptor else feature_name
+                        help_text = descriptor.description if descriptor else f"Variable {feature_name} del modelo."
+                        series = bundle.df[feature_name]
+                        is_numeric = pd.api.types.is_numeric_dtype(series)
+                        with field_cols[index % 2]:
+                            if is_numeric:
+                                value = st.number_input(
+                                    label,
+                                    value=float(series.median()),
+                                    help=help_text,
+                                )
+                                features[feature_name] = value
+                            else:
+                                options = sorted(series.astype(str).unique().tolist())
+                                features[feature_name] = st.selectbox(
+                                    label,
+                                    options=options,
+                                    help=help_text,
+                                )
+                    submitted = st.form_submit_button("Ejecutar predicción", type="primary", use_container_width=True)
+                if submitted:
+                    result = self.container.predictions.predict(bundle.exercise, features)
+                    st.session_state["prediction_cache"] = result.to_dict()
+                    prediction_cache = result.to_dict()
+                    self.container.sessions.save_progress(
+                        record.participant_id,
+                        bundle.exercise,
+                        {
+                            "prediction_inputs": features,
+                            "prediction_output": result.to_dict(),
+                        },
+                    )
+                else:
+                    prediction_cache = st.session_state.get("prediction_cache")
 
         with right_col:
             if prediction_cache:
+                _render_simulation_card(exercise_label, prediction_cache)
+            else:
+                st.info("Completa los campos del caso de prueba y pulsa 'Ejecutar predicción' para ver el resultado.")
+            _render_kpi_stack(evaluation)
+
+        with st.container(border=True, key="prediction-results-card"):
+            _render_results_socialization(evaluation)
+            if prediction_cache:
                 _html(
                     f"""
-                    <div class="bankify-prediction-output">
-                        <h2>{prediction_cache['label']}</h2>
-                        <span class="bankify-metric-label">Probabilidad</span>
-                        <p class="bankify-metric-value">{prediction_cache['probability']:.1%}</p>
-                        <p class="bankify-metric-subtitle">Ejercicio: {exercise_label}</p>
-                        <span class="bankify-prediction-badge">{prediction_cache['provider'].replace('_', ' ').title()}</span>
+                    <div class="bankify-result-card">
+                        <h3>Explicación pedagógica</h3>
+                        <p>{prediction_cache['pedagogical_summary']}</p>
                     </div>
                     """
                 )
-            else:
-                st.info("Completa los campos del caso de prueba y pulsa 'Ejecutar predicción' para ver el resultado.")
-
-        evaluation = self.container.model_evaluation.evaluate(bundle.exercise)
-        _render_model_performance(evaluation)
 
         if prediction_cache:
             progress = self._exercise_progress(record, bundle.exercise)
             _html(
-                f"""
-                <div class="bankify-result-card">
-                    <h3>Explicación pedagógica</h3>
-                    <p>{prediction_cache['pedagogical_summary']}</p>
-                </div>
+                """
                 <div class="bankify-question-box">
                     <span class="bankify-question-box-tag">Tu turno · Reflexión</span>
                     <p>¿Qué entendiste de la explicación del modelo y qué variable te parece más determinante?</p>

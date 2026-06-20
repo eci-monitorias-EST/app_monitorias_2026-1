@@ -327,6 +327,17 @@ class ModelEvaluationService:
             reverse=True,
         )[:10]
 
+        coefficient_importance = None
+        if isinstance(classifier, LogisticRegression):
+            coefficient_importance = sorted(
+                (
+                    {"feature": name, "coefficient": float(value)}
+                    for name, value in zip(feature_names, classifier.coef_[0])
+                ),
+                key=lambda item: abs(item["coefficient"]),
+                reverse=True,
+            )[:10]
+
         return ModelEvaluationResult(
             exercise=exercise,
             model_name=EVALUATION_MODEL_NAMES[exercise],
@@ -338,6 +349,7 @@ class ModelEvaluationService:
             class_labels=EVALUATION_CLASS_LABELS[exercise],
             shap_importance=shap_importance,
             test_size=len(y_test),
+            coefficient_importance=coefficient_importance,
         )
 
 

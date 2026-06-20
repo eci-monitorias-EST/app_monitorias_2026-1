@@ -210,37 +210,6 @@ def inject_global_styles() -> None:
             letter-spacing: 0.05em;
             text-transform: uppercase;
         }
-        .bankify-prediction-panel {
-            display: grid;
-            grid-template-columns: 1.3fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .bankify-prediction-panel-left,
-        .bankify-prediction-panel-right {
-            background: rgba(255, 255, 255, 0.94);
-            border: 1px solid rgba(14, 90, 207, 0.12);
-            border-radius: 20px;
-            padding: 1.35rem 1.4rem;
-            box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
-        }
-        .bankify-prediction-panel-left h2,
-        .bankify-prediction-panel-right h2 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-            color: #08245c;
-        }
-        .bankify-prediction-panel-left p,
-        .bankify-prediction-panel-right p {
-            margin: 0;
-            color: #475569;
-            line-height: 1.7;
-        }
-        .bankify-prediction-panel-right {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
         .bankify-prediction-output {
             background: #ffffff;
             border: 1px solid rgba(14, 90, 207, 0.14);
@@ -281,6 +250,114 @@ def inject_global_styles() -> None:
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+        .st-key-prediction-input-card,
+        .st-key-prediction-results-card {
+            border-radius: 20px !important;
+            border-color: rgba(14, 90, 207, 0.14) !important;
+            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.06);
+        }
+        .bankify-section-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+        .bankify-section-card-header .bankify-section-icon {
+            color: #006bd6;
+            font-size: 1.1rem;
+        }
+        .bankify-section-card-header h2 {
+            margin: 0;
+            color: #08245c;
+            font-size: 1.2rem;
+        }
+        .bankify-simulation-card {
+            background: linear-gradient(135deg, #08245c 0%, #1267cf 100%);
+            border-radius: 20px;
+            color: #ffffff;
+            padding: 1.5rem 1.6rem;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+            margin-bottom: 1rem;
+        }
+        .bankify-simulation-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            color: #dbeafe;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0.32rem 0.75rem;
+            margin-bottom: 1.1rem;
+        }
+        .bankify-simulation-label {
+            color: #aac4f5;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .bankify-simulation-value {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 0 1.3rem;
+        }
+        .bankify-status-dot {
+            width: 0.65rem;
+            height: 0.65rem;
+            border-radius: 50%;
+            background: #60a5fa;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .bankify-status-dot.good { background: #34d399; }
+        .bankify-status-dot.warn { background: #f59e0b; }
+        .bankify-simulation-confidence-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
+        }
+        .bankify-simulation-confidence-row span:first-child {
+            color: #c7d8ff;
+            font-size: 0.85rem;
+        }
+        .bankify-simulation-confidence-row span:last-child {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+        .bankify-simulation-track {
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            height: 0.5rem;
+            overflow: hidden;
+            margin-bottom: 1.2rem;
+        }
+        .bankify-simulation-track span {
+            background: #60a5fa;
+            border-radius: inherit;
+            display: block;
+            height: 100%;
+        }
+        .bankify-simulation-badge {
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            color: #e2eefa;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 0.35rem 0.8rem;
+        }
         .bankify-dictionary-row:first-child .bankify-dictionary-cell {
             border-top: none;
         }
@@ -300,28 +377,18 @@ def inject_global_styles() -> None:
             margin: 0.35rem 0;
             color: #334155;
         }
-        .bankify-model-performance {
-            margin: 2rem auto 0;
-            max-width: 1080px;
-        }
-        .bankify-model-performance h2 {
-            color: #08245c;
-            font-size: 1.4rem;
-            margin: 0 0 0.4rem;
-        }
         .bankify-model-intro {
             color: #475569;
             font-size: 0.95rem;
             line-height: 1.55;
             margin: 0 0 1.2rem;
         }
-        .bankify-kpi-grid {
-            display: grid;
-            gap: 0.9rem;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            margin: 0 0 1.5rem;
+        .bankify-kpi-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 0 0 1rem;
         }
-        @media (max-width: 1100px) { .bankify-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         .bankify-kpi-card {
             background: #ffffff;
             border: 1px solid rgba(15, 23, 42, 0.08);
