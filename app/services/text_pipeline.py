@@ -65,6 +65,12 @@ class DimensionalityReducer:
         reduced = reducer.fit_transform(matrix)
         coordinates = np.zeros((sample_count, 3), dtype=float)
         coordinates[:, :component_count] = reduced
+        # PCA components with ~0 variance (typical when sample_count <= 4, since
+        # centering N points leaves rank <= N-1) come back as float noise around
+        # 1e-16 instead of a clean 0.0. Plotly's 3D scene fails to render the grid
+        # and markers when an axis has that near-zero-but-nonzero noise, so round
+        # it away rather than leaving floating-point artifacts in the projection.
+        coordinates = np.round(coordinates, decimals=9)
 
         LOGGER.info(
             "Usando fallback determinístico para proyección 3D con %s comentarios.",
