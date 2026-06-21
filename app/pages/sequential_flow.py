@@ -14,6 +14,7 @@ from services.modeling import DatasetBundle
 from services.app_container import get_container
 from services.comment_events import COMMENT_TYPE_LABELS
 from services.dashboard_sections import combine_sections, split_sections
+from services.pdf_report import build_feedback_report_pdf
 from services.sequential_flow_state import FlowContext, build_sequential_flow_state_machine
 from services.sequential_flow_state import derive_exercise_flow_state, derive_max_unlocked_step
 from services.submission_validation import SubmissionValidationService
@@ -555,38 +556,6 @@ class SequentialLearningFlow:
                     continue_to_dataset(exercise)
         return
 
-    def _render_exercise_choice(self) -> None:
-        record = self._current_record()
-        if not record:
-            st.warning("Primero activa o recupera tu sesión.")
-            return
-        st.title("Elige tu ejercicio")
-        columns = st.columns(2)
-        options = [
-            (
-                ExerciseOption.CREDIT_APPROVAL,
-                "Aprobación de crédito",
-                "Analiza el perfil del solicitante y determina si Bankify debería aprobar o revisar la solicitud.",
-            ),
-            (
-                ExerciseOption.DEFAULT_RISK,
-                "Probabilidad de mora",
-                "Estudia historiales de pago para anticipar incumplimiento y explicar el riesgo de mora.",
-            ),
-        ]
-        for column, (key, title, description) in zip(columns, options):
-            with column:
-                st.markdown(
-                    f"<div class='bankify-card'><h3>{title}</h3><p>{description}</p></div>",
-                    unsafe_allow_html=True,
-                )
-                if st.button(f"Seleccionar {title}", key=f"select_{key}", use_container_width=True):
-                    self._switch_selected_exercise(record, key)
-                    st.success(f"Ejercicio seleccionado: {title}")
-                    st.rerun()
-        if record.selected_exercise:
-            st.info(f"Selección actual: {ExerciseOption.LABELS[record.selected_exercise]}")
-
     def _render_dataset_view(self) -> None:
         record = self._current_record()
         bundle = self._current_bundle()
@@ -966,6 +935,33 @@ class SequentialLearningFlow:
             )
             self.container.sessions.complete_activity(record.participant_id, bundle.exercise)
             st.success("Actividad finalizada. Tus comentarios ya hacen parte de la visualización anónima del ejercicio.")
+            record = self._current_record()
+            progress = self._exercise_progress(record, bundle.exercise) if record else None
+
+        if record and progress and progress.feedback is not None:
+            self._render_report_download(record, bundle, progress)
+
+    def _render_report_download(
+        self, record: ParticipantRecord, bundle: DatasetBundle, progress: ExerciseProgress
+    ) -> None:
+        evaluation = self.container.model_evaluation.evaluate(bundle.exercise)
+        try:
+            pdf_bytes = build_feedback_report_pdf(
+                participant=record,
+                bundle=bundle,
+                progress=progress,
+                evaluation=evaluation,
+            )
+        except Exception:
+            st.warning("No fue posible generar el PDF del reporte en este momento.")
+            return
+        st.download_button(
+            "Descargar reporte en PDF",
+            data=pdf_bytes,
+            file_name=f"bankify_{bundle.exercise}_{record.public_alias}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
 
 
 def render() -> None:

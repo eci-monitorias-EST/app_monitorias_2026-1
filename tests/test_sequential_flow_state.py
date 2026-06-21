@@ -29,43 +29,16 @@ def test_step_two_requires_an_active_record() -> None:
     assert machine.next_step_id(2, _build_context(_build_record())) == 3
 
 
-def test_step_three_requires_selected_exercise() -> None:
-    machine = build_sequential_flow_state_machine()
-
-    assert machine.next_step_id(3, _build_context(_build_record(selected_exercise=None))) is None
-    assert machine.next_step_id(3, _build_context(_build_record())) == 4
-
-
 def test_dataset_step_requires_meaningful_dataset_comment() -> None:
     machine = build_sequential_flow_state_machine()
 
-    assert machine.next_step_id(4, _build_context(_build_record())) is None
+    assert machine.next_step_id(3, _build_context(_build_record())) is None
     assert machine.next_step_id(
-        4,
+        3,
         _build_context(
             _build_record(dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos."),
         ),
-    ) == 5
-
-
-def test_dashboard_step_requires_meaningful_analytics_comment() -> None:
-    machine = build_sequential_flow_state_machine()
-
-    assert machine.next_step_id(
-        5,
-        _build_context(
-            _build_record(dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos."),
-        ),
-    ) is None
-    assert machine.next_step_id(
-        5,
-        _build_context(
-            _build_record(
-                dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
-                analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
-            )
-        ),
-    ) == 6
+    ) == 4
 
 
 def test_dashboard_step_requires_all_three_section_answers() -> None:
@@ -118,8 +91,8 @@ def test_prediction_step_requires_output_and_meaningful_reflection_for_current_e
         prediction_output={"label": "Aprobado", "probability": 0.82},
     )
 
-    assert machine.next_step_id(6, _build_context(blocked_record)) is None
-    assert machine.next_step_id(6, _build_context(allowed_record)) == 7
+    assert machine.next_step_id(5, _build_context(blocked_record)) is None
+    assert machine.next_step_id(5, _build_context(allowed_record)) == 6
 
 
 def test_prediction_guard_only_considers_current_exercise_output() -> None:
@@ -130,7 +103,7 @@ def test_prediction_guard_only_considers_current_exercise_output() -> None:
         "probability": 0.12,
     }
 
-    assert machine.next_step_id(6, _build_context(record)) is None
+    assert machine.next_step_id(5, _build_context(record)) is None
 
 
 def test_derive_max_unlocked_step_resets_new_exercise_but_restores_previous_progress() -> None:
@@ -138,13 +111,19 @@ def test_derive_max_unlocked_step_resets_new_exercise_but_restores_previous_prog
     progressed_record = _build_record(
         selected_exercise=ExerciseOption.CREDIT_APPROVAL,
         dataset_comment="Detecté ingresos altos y deuda controlada en la mayoría de casos.",
-        analytics_comment="Los gráficos muestran menos riesgo cuando baja la relación cuota ingreso.",
+        analytics_comment=combine_sections(
+            {
+                1: "El panorama general muestra menos riesgo cuando baja la relación cuota ingreso.",
+                2: "Cada variable aporta una lectura distinta del perfil del solicitante.",
+                3: "Las relaciones entre variables refuerzan ese mismo patrón de riesgo.",
+            }
+        ),
         prediction_reflection="La explicación confirma que ingresos estables pesan más que el monto solicitado.",
         prediction_output={"label": "Aprobado", "probability": 0.82},
     )
 
-    assert derive_max_unlocked_step(empty_record, SubmissionValidationService().has_meaningful_learning_text) == 4
-    assert derive_max_unlocked_step(progressed_record, SubmissionValidationService().has_meaningful_learning_text) == 8
+    assert derive_max_unlocked_step(empty_record, SubmissionValidationService().has_meaningful_learning_text) == 3
+    assert derive_max_unlocked_step(progressed_record, SubmissionValidationService().has_meaningful_learning_text) == 7
 
 
 def test_invalid_step_id_raises_clear_error() -> None:

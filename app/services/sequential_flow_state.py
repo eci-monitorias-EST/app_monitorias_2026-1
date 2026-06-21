@@ -129,10 +129,6 @@ def _require_record(context: FlowContext) -> bool:
     return context.record is not None
 
 
-def _require_selected_exercise(context: FlowContext) -> bool:
-    return bool(context.record and context.selected_exercise)
-
-
 def _require_dataset_comment(context: FlowContext) -> bool:
     progress = context.progress
     if progress is None:
