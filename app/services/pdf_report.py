@@ -39,8 +39,8 @@ _PAGE_WIDTH, _PAGE_HEIGHT = A4
 _FOOTER_HEIGHT = 1.3 * cm
 _MARGIN = 1.5 * cm
 
-_BANKIFY_NAVY = colors.HexColor("#08245c")
-_BANKIFY_BLUE = colors.HexColor("#006bd6")
+_BANKIFY_NAVY = colors.HexColor("#002d87")
+_BANKIFY_BLUE = colors.HexColor("#00c29b")
 _BANKIFY_MUTED = colors.HexColor("#4b5563")
 _BANKIFY_INK = colors.HexColor("#101828")
 _BANKIFY_FAINT = colors.HexColor("#94a3b8")

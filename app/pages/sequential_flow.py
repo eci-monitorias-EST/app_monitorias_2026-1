@@ -126,7 +126,7 @@ def _render_results_socialization(evaluation: ModelEvaluationResult) -> None:
     if evaluation.coefficient_importance is not None:
         _html("<p class='bankify-cm-tag'>Coeficientes del modelo (betas)</p>")
         top_items = list(reversed(evaluation.coefficient_importance[:8]))
-        bar_colors = ["#006bd6" if item["coefficient"] >= 0 else "#be123c" for item in top_items]
+        bar_colors = ["#00c29b" if item["coefficient"] >= 0 else "#be123c" for item in top_items]
         fig = go.Figure(
             go.Bar(
                 x=[item["coefficient"] for item in top_items],
@@ -143,7 +143,7 @@ def _render_results_socialization(evaluation: ModelEvaluationResult) -> None:
         )
         st.plotly_chart(fig, use_container_width=True)
         st.caption(
-            "Un beta positivo (azul) aumenta la probabilidad de la clase positiva; "
+            "Un beta positivo (turquesa) aumenta la probabilidad de la clase positiva; "
             "un beta negativo (rojo) la reduce. Por ser un modelo de regresión logística, "
             "estos coeficientes son directamente interpretables."
         )
@@ -155,7 +155,7 @@ def _render_results_socialization(evaluation: ModelEvaluationResult) -> None:
                 x=[item["importance"] for item in top_items],
                 y=[item["feature"] for item in top_items],
                 orientation="h",
-                marker_color="#006bd6",
+                marker_color="#00c29b",
             )
         )
         fig.update_layout(

@@ -9,26 +9,26 @@ def inject_global_styles() -> None:
         <style>
         .stApp {
             background:
-                radial-gradient(circle at top left, rgba(56, 189, 248, 0.15), transparent 30%),
+                radial-gradient(circle at top left, rgba(0, 242, 195, 0.15), transparent 30%),
                 radial-gradient(circle at top right, rgba(21, 94, 239, 0.12), transparent 26%),
-                linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+                linear-gradient(180deg, #f7fffb 0%, #eafff5 100%);
         }
         button[kind="primary"],
         button[kind="primaryFormSubmit"] {
-            background-color: #1f77b4 !important;
-            border-color: #1f77b4 !important;
+            background-color: #00c29b !important;
+            border-color: #00c29b !important;
             color: #ffffff !important;
         }
         button[kind="primary"]:hover,
         button[kind="primaryFormSubmit"]:hover {
-            background-color: #15598f !important;
-            border-color: #15598f !important;
+            background-color: #00876c !important;
+            border-color: #00876c !important;
             color: #ffffff !important;
         }
         .bankify-hero {
             position: relative;
             overflow: hidden;
-            background: linear-gradient(120deg, #08245c 0%, #1267cf 58%, #3a7cf0 100%);
+            background: linear-gradient(120deg, #5a0087 0%, #004be0 58%, #00e0b4 100%);
             color: #ffffff;
             padding: 2.25rem 2.55rem;
             border-radius: 18px;
@@ -96,7 +96,7 @@ def inject_global_styles() -> None:
             text-align: center;
         }
         .bankify-access-heading h2 {
-            color: #08245c;
+            color: #002d87;
             font-size: 1.35rem;
             margin: 0 0 0.55rem;
             letter-spacing: 0;
@@ -155,7 +155,7 @@ def inject_global_styles() -> None:
             display: grid;
             grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
             gap: 1.5rem;
-            background: linear-gradient(135deg, #08245c 0%, #1367cf 100%);
+            background: linear-gradient(135deg, #5a0087 0%, #004be0 100%);
             border-radius: 24px;
             color: #ffffff;
             padding: 2rem;
@@ -179,11 +179,11 @@ def inject_global_styles() -> None:
             min-height: 240px;
         }
         .bankify-prediction-summary h2 {
-            color: #e2eefa;
+            color: #baffe6;
             margin: 0 0 0.55rem;
         }
         .bankify-prediction-summary .bankify-metric-label {
-            color: #c7d8ff;
+            color: #bad1ff;
             font-size: 0.92rem;
             margin-bottom: 0.8rem;
             display: block;
@@ -195,7 +195,7 @@ def inject_global_styles() -> None:
             margin: 0;
         }
         .bankify-prediction-summary .bankify-metric-subtitle {
-            color: rgba(226, 236, 255, 0.78);
+            color: rgba(186, 209, 255, 0.78);
             margin-top: 0.2rem;
         }
         .bankify-prediction-summary .bankify-prediction-tag {
@@ -204,7 +204,7 @@ def inject_global_styles() -> None:
             padding: 0.35rem 0.75rem;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.16);
-            color: #dbeafe;
+            color: #baffe6;
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.05em;
@@ -212,7 +212,7 @@ def inject_global_styles() -> None:
         }
         .bankify-prediction-output {
             background: #ffffff;
-            border: 1px solid rgba(14, 90, 207, 0.14);
+            border: 1px solid rgba(0, 75, 224, 0.14);
             border-radius: 24px;
             box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
             padding: 1.5rem;
@@ -220,7 +220,7 @@ def inject_global_styles() -> None:
         }
         .bankify-prediction-output h2 {
             margin: 0 0 0.75rem;
-            color: #08245c;
+            color: #002d87;
         }
         .bankify-prediction-output .bankify-metric-label {
             color: #475569;
@@ -243,8 +243,8 @@ def inject_global_styles() -> None:
             margin-top: 1rem;
             padding: 0.4rem 0.85rem;
             border-radius: 999px;
-            background: #eff6ff;
-            color: #1d4ed8;
+            background: #e6fff6;
+            color: #00876c;
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -253,7 +253,7 @@ def inject_global_styles() -> None:
         .st-key-prediction-input-card,
         .st-key-prediction-results-card {
             border-radius: 20px !important;
-            border-color: rgba(14, 90, 207, 0.14) !important;
+            border-color: rgba(0, 75, 224, 0.14) !important;
             box-shadow: 0 18px 32px rgba(15, 23, 42, 0.06);
         }
         .bankify-section-card-header {
@@ -263,16 +263,16 @@ def inject_global_styles() -> None:
             margin-bottom: 0.5rem;
         }
         .bankify-section-card-header .bankify-section-icon {
-            color: #006bd6;
+            color: #00c29b;
             font-size: 1.1rem;
         }
         .bankify-section-card-header h2 {
             margin: 0;
-            color: #08245c;
+            color: #002d87;
             font-size: 1.2rem;
         }
         .bankify-simulation-card {
-            background: linear-gradient(135deg, #08245c 0%, #1267cf 100%);
+            background: linear-gradient(135deg, #004be0 0%, #00c29b 100%);
             border-radius: 20px;
             color: #ffffff;
             padding: 1.5rem 1.6rem;
@@ -284,7 +284,7 @@ def inject_global_styles() -> None:
             background: rgba(255, 255, 255, 0.14);
             border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 999px;
-            color: #dbeafe;
+            color: #baffe6;
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.06em;
@@ -293,7 +293,7 @@ def inject_global_styles() -> None:
             margin-bottom: 1.1rem;
         }
         .bankify-simulation-label {
-            color: #aac4f5;
+            color: #bad1ff;
             font-size: 0.74rem;
             font-weight: 800;
             letter-spacing: 0.07em;
@@ -313,7 +313,7 @@ def inject_global_styles() -> None:
             width: 0.65rem;
             height: 0.65rem;
             border-radius: 50%;
-            background: #60a5fa;
+            background: #00c29b;
             display: inline-block;
             flex-shrink: 0;
         }
@@ -326,7 +326,7 @@ def inject_global_styles() -> None:
             margin-bottom: 0.5rem;
         }
         .bankify-simulation-confidence-row span:first-child {
-            color: #c7d8ff;
+            color: #bad1ff;
             font-size: 0.85rem;
         }
         .bankify-simulation-confidence-row span:last-child {
@@ -342,7 +342,7 @@ def inject_global_styles() -> None:
             margin-bottom: 1.2rem;
         }
         .bankify-simulation-track span {
-            background: #60a5fa;
+            background: #baffe6;
             border-radius: inherit;
             display: block;
             height: 100%;
@@ -351,7 +351,7 @@ def inject_global_styles() -> None:
             display: inline-flex;
             background: rgba(255, 255, 255, 0.14);
             border-radius: 999px;
-            color: #e2eefa;
+            color: #baffe6;
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.04em;
@@ -362,7 +362,7 @@ def inject_global_styles() -> None:
             border-top: none;
         }
         .bankify-result-card {
-            background: #f8fbff;
+            background: #f7fffc;
             border: 1px solid rgba(15, 23, 42, 0.08);
             border-radius: 18px;
             padding: 1.3rem 1.45rem;
@@ -370,7 +370,7 @@ def inject_global_styles() -> None:
         }
         .bankify-result-card h3 {
             margin: 0 0 0.75rem;
-            color: #08245c;
+            color: #002d87;
             font-size: 1.15rem;
         }
         .bankify-result-card p {
@@ -407,7 +407,7 @@ def inject_global_styles() -> None:
             text-transform: uppercase;
         }
         .bankify-kpi-value {
-            color: #08245c;
+            color: #002d87;
             font-size: 1.85rem;
             font-weight: 700;
         }
@@ -417,7 +417,7 @@ def inject_global_styles() -> None:
             line-height: 1.35;
         }
         .bankify-cm-tag {
-            color: #1d4ed8;
+            color: #00a483;
             font-size: 0.8rem;
             font-weight: 800;
             letter-spacing: 0.04em;
@@ -461,7 +461,7 @@ def inject_global_styles() -> None:
         .bankify-profile-hero {
             position: relative;
             overflow: hidden;
-            background: linear-gradient(90deg, #061b52 0%, #082760 52%, #0b3a81 100%);
+            background: linear-gradient(90deg, #00246b 0%, #002d87 52%, #0037a4 100%);
             border-radius: 8px;
             color: #ffffff;
             margin: 0.35rem 0 1.5rem;
@@ -474,8 +474,8 @@ def inject_global_styles() -> None:
             inset: 0 0 0 auto;
             width: 46%;
             background:
-                linear-gradient(90deg, rgba(6, 27, 82, 0.2), rgba(7, 38, 96, 0.88)),
-                repeating-linear-gradient(90deg, transparent 0 14px, rgba(96, 165, 250, 0.18) 14px 15px);
+                linear-gradient(90deg, rgba(0, 36, 107, 0.2), rgba(0, 45, 135, 0.88)),
+                repeating-linear-gradient(90deg, transparent 0 14px, rgba(0, 194, 155, 0.18) 14px 15px);
             opacity: 0.72;
         }
         .bankify-profile-hero > div {
@@ -496,12 +496,12 @@ def inject_global_styles() -> None:
             padding: 0.42rem 0.78rem;
         }
         .bankify-profile-copy {
-            color: rgba(191, 219, 254, 0.92);
+            color: rgba(186, 209, 255, 0.92);
             line-height: 1.5;
             margin: 1rem 0 0;
         }
         .bankify-history-link {
-            color: #0057c8;
+            color: #00a483;
             font-weight: 700;
             margin: 0;
             text-align: right;
@@ -524,9 +524,9 @@ def inject_global_styles() -> None:
         }
         .bankify-process-icon {
             align-items: center;
-            background: #eaf4ff;
+            background: #e6fff6;
             border-radius: 8px;
-            color: #006bd6;
+            color: #00a483;
             display: inline-flex;
             font-size: 1.25rem;
             font-weight: 800;
@@ -541,8 +541,8 @@ def inject_global_styles() -> None:
             padding: 0.28rem 0.65rem;
         }
         .bankify-process-status.progress {
-            background: #eaf4ff;
-            color: #006bd6;
+            background: #e6fff6;
+            color: #00a483;
         }
         .bankify-process-status.new {
             background: #eef0f3;
@@ -570,7 +570,7 @@ def inject_global_styles() -> None:
             overflow: hidden;
         }
         .bankify-progress-track span {
-            background: #006bd6;
+            background: #00c29b;
             border-radius: inherit;
             display: block;
             height: 100%;
@@ -578,7 +578,7 @@ def inject_global_styles() -> None:
         }
         .bankify-data-hero {
             align-items: center;
-            background: linear-gradient(90deg, #12377f 0%, #17377d 72%, #102f73 100%);
+            background: linear-gradient(90deg, #002d87 0%, #0037a4 72%, #00246b 100%);
             border-radius: 8px;
             box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
             color: #ffffff;
@@ -590,7 +590,7 @@ def inject_global_styles() -> None:
             padding: 2rem 2.4rem;
         }
         .bankify-data-hero h1 {
-            color: #c7dcff;
+            color: #bad1ff;
             font-size: 1.55rem;
             letter-spacing: 0;
             margin: 0 0 0.75rem;
@@ -602,9 +602,9 @@ def inject_global_styles() -> None:
             max-width: 760px;
         }
         .bankify-filter-pill {
-            background: rgba(0, 107, 214, 0.35);
+            background: rgba(0, 194, 155, 0.35);
             border-radius: 4px;
-            color: #60a5fa;
+            color: #2effcf;
             display: inline-block;
             font-size: 0.7rem;
             font-weight: 800;
@@ -633,7 +633,7 @@ def inject_global_styles() -> None:
             padding: 1rem 1.2rem;
             text-align: left;
             text-transform: uppercase;
-            border-bottom: 1px solid #dbe5ff;
+            border-bottom: 1px solid #baffe6;
         }
         .bankify-dictionary-row + .bankify-dictionary-row td {
             border-top: 1px solid #edf0f4;
@@ -644,11 +644,11 @@ def inject_global_styles() -> None:
             vertical-align: top;
         }
         .bankify-dictionary-cell.bankify-var-name {
-            color: #001a4d !important;
+            color: #00246b !important;
             font-weight: 800;
         }
         .bankify-book-icon {
-            color: rgba(0, 107, 214, 0.7);
+            color: rgba(0, 194, 155, 0.7);
             font-size: 4rem;
             font-weight: 800;
         }
@@ -669,13 +669,13 @@ def inject_global_styles() -> None:
             padding: 1.2rem 1.45rem;
         }
         .bankify-dictionary-card h2 {
-            color: #001a4d;
+            color: #00246b;
             font-size: 1.35rem;
             letter-spacing: 0;
             margin: 0;
         }
         .bankify-section-icon {
-            color: #006bd6;
+            color: #00c29b;
             font-size: 1.2rem;
         }
         .bankify-dictionary-table-wrapper {
@@ -699,7 +699,7 @@ def inject_global_styles() -> None:
             padding: 1rem 1.2rem;
             text-align: left;
             text-transform: uppercase;
-            border-bottom: 1px solid #dbe5ff;
+            border-bottom: 1px solid #baffe6;
         }
         .bankify-dictionary-row + .bankify-dictionary-row td {
             border-top: 1px solid #edf0f4;
@@ -710,13 +710,13 @@ def inject_global_styles() -> None:
             vertical-align: top;
         }
         .bankify-dictionary-cell.bankify-var-name {
-            color: #001a4d !important;
+            color: #00246b !important;
             font-weight: 800;
         }
         .bankify-type-badge {
-            background: #dbe5ff;
+            background: #e6fff6;
             border-radius: 4px;
-            color: #1e3a8a;
+            color: #00876c;
             display: inline-block;
             font-size: 0.78rem;
             font-weight: 800;
@@ -726,14 +726,14 @@ def inject_global_styles() -> None:
             margin: 1.5rem 0 1rem;
             padding: 1.25rem 1.35rem;
             border-radius: 16px;
-            background: #f8fbff;
-            border: 1px solid #dbe5ff;
+            background: #f7fffc;
+            border: 1px solid #baffe6;
             box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
         }
         .bankify-question-box-tag {
             display: inline-block;
             margin-bottom: 0.75rem;
-            background: #0f2c6b;
+            background: #0037a4;
             color: #ffffff;
             border-radius: 999px;
             padding: 0.26rem 0.72rem;
@@ -765,7 +765,7 @@ def inject_global_styles() -> None:
             font-size: 0.82rem;
         }
         .step-chip.active {
-            background: #155eef;
+            background: #00c29b;
             color: #ffffff;
         }
         </style>

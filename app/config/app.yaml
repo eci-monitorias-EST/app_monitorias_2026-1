@@ -1,8 +1,8 @@
 {
   "app": {
     "title": "Bankify Monitorias",
-    "theme_color": "#155eef",
-    "hero_gradient": "linear-gradient(120deg, #0f172a 0%, #155eef 55%, #38bdf8 100%)"
+    "theme_color": "#00c29b",
+    "hero_gradient": "linear-gradient(120deg, #5a0087 0%, #004be0 55%, #00e0b4 100%)"
   },
   "persistence": {
     "store": "sqlite",

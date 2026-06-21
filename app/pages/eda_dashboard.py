@@ -136,7 +136,7 @@ _DASHBOARD_CSS = """
 .eda-hero {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(115deg, #061b52 0%, #0d3a8f 55%, #155eef 100%);
+    background: linear-gradient(115deg, #5a0087 0%, #004be0 55%, #00e0b4 100%);
     border-radius: 14px;
     color: #ffffff;
     margin: 0.4rem 0 1.4rem;
@@ -149,12 +149,12 @@ _DASHBOARD_CSS = """
     inset: 0 0 0 auto;
     width: 42%;
     background:
-        radial-gradient(circle at 78% 22%, rgba(96, 165, 250, 0.35), transparent 55%),
-        repeating-linear-gradient(115deg, transparent 0 16px, rgba(96, 165, 250, 0.12) 16px 17px);
+        radial-gradient(circle at 78% 22%, rgba(0, 224, 180, 0.35), transparent 55%),
+        repeating-linear-gradient(115deg, transparent 0 16px, rgba(0, 224, 180, 0.12) 16px 17px);
 }
 .eda-hero > * { position: relative; z-index: 1; }
 .eda-hero-kicker {
-    color: #93c5fd;
+    color: #bad1ff;
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.18em;
@@ -172,7 +172,7 @@ _DASHBOARD_CSS = """
     max-width: 82%;
 }
 .eda-hero p {
-    color: rgba(219, 234, 254, 0.92);
+    color: rgba(186, 209, 255, 0.92);
     font-size: 1rem;
     line-height: 1.6;
     margin: 0 0 1.05rem;
@@ -257,7 +257,7 @@ _DASHBOARD_CSS = """
     padding-bottom: 0.7rem;
 }
 .nb-cap-num {
-    color: rgba(15, 44, 107, 0.22);
+    color: rgba(0, 45, 135, 0.22);
     font-family: 'Fraunces', Georgia, serif;
     font-size: 3rem;
     font-weight: 700;
@@ -280,7 +280,7 @@ _DASHBOARD_CSS = """
     margin: 1.5rem 0 0.5rem;
 }
 .nb-fig-num {
-    color: #0f2c6b;
+    color: #0037a4;
     font-family: 'Fraunces', Georgia, serif;
     font-size: 0.92rem;
     font-style: italic;
@@ -289,7 +289,7 @@ _DASHBOARD_CSS = """
     white-space: nowrap;
 }
 .nb-fig-head h4 {
-    border-bottom: 2px solid rgba(15, 44, 107, 0.18);
+    border-bottom: 2px solid rgba(0, 45, 135, 0.18);
     color: #101828;
     font-size: 1.04rem;
     letter-spacing: 0;
@@ -298,7 +298,7 @@ _DASHBOARD_CSS = """
 }
 
 .eda-glosa-tag {
-    color: #0f2c6b;
+    color: #0037a4;
     font-size: 0.74rem;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -312,20 +312,20 @@ _DASHBOARD_CSS = """
     margin: 0 0 0.3rem;
 }
 .eda-glosa-chip {
-    background: #eef2fb;
-    border: 1px solid #d6def0;
+    background: #e6fff6;
+    border: 1px solid #baffe6;
     border-radius: 6px;
     color: #23324f;
     font-size: 0.8rem;
     padding: 0.28rem 0.62rem;
 }
-.eda-glosa-chip b { color: #0f2c6b; }
+.eda-glosa-chip b { color: #0037a4; }
 
 .eda-cajon {
     margin: 1.6rem 0 0.4rem;
 }
 .eda-cajon-tag {
-    background: #0f2c6b;
+    background: #0037a4;
     border-radius: 999px;
     color: #ffffff;
     font-size: 0.68rem;
@@ -345,9 +345,9 @@ _DASHBOARD_CSS = """
 div[data-testid="stForm"]:has(textarea[aria-label="Tu respuesta del capítulo"]) {
     background: #fffdf7;
     border: 1px solid #e2ddd0;
-    border-left: 4px solid #0f2c6b;
+    border-left: 4px solid #0037a4;
     border-radius: 4px;
-    box-shadow: 0 8px 20px rgba(15, 44, 107, 0.07);
+    box-shadow: 0 8px 20px rgba(0, 45, 135, 0.07);
     padding: 1rem 1.2rem 1.1rem;
 }
 
@@ -358,8 +358,8 @@ div[data-testid="stForm"]:has(textarea[aria-label="Tu respuesta del capítulo"])
     margin: 0 0 1rem;
 }
 .eda-chapter-pill {
-    background: #eef2fb;
-    border: 1px solid #d6def0;
+    background: #e6fff6;
+    border: 1px solid #baffe6;
     border-radius: 999px;
     color: #5b6b8c;
     font-size: 0.8rem;
@@ -367,8 +367,8 @@ div[data-testid="stForm"]:has(textarea[aria-label="Tu respuesta del capítulo"])
     padding: 0.32rem 0.85rem;
 }
 .eda-chapter-pill.active {
-    background: #0f2c6b;
-    border-color: #0f2c6b;
+    background: #0037a4;
+    border-color: #0037a4;
     color: #ffffff;
 }
 </style>
