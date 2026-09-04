@@ -1,0 +1,1744 @@
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document (opensource)
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R /F5 7 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Times-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
+>>
+endobj
+5 0 obj
+<<
+/BaseFont /Symbol /Name /F4 /Subtype /Type1 /Type /Font
+>>
+endobj
+6 0 obj
+<<
+/Contents 15 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 14 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+7 0 obj
+<<
+/BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding /Name /F5 /Subtype /Type1 /Type /Font
+>>
+endobj
+8 0 obj
+<<
+/Contents 16 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 14 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+9 0 obj
+<<
+/Contents 17 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 14 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+10 0 obj
+<<
+/Contents 18 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 14 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+11 0 obj
+<<
+/Contents 19 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 14 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+12 0 obj
+<<
+/PageMode /UseNone /Pages 14 0 R /Type /Catalog
+>>
+endobj
+13 0 obj
+<<
+/Author (\(anonymous\)) /CreationDate (D:20260625211354-05'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20260625211354-05'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (\(unspecified\)) /Title (\(anonymous\)) /Trapped /False
+>>
+endobj
+14 0 obj
+<<
+/Count 5 /Kids [ 6 0 R 8 0 R 9 0 R 10 0 R 11 0 R ] /Type /Pages
+>>
+endobj
+15 0 obj
+<<
+/Length 8896
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 .176471 .529412 rg
+n 0 0 595.2756 36.85039 re f*
+0 .760784 .607843 rg
+n 0 36.85039 595.2756 1.984252 re f*
+1 1 1 rg
+BT /F2 12 Tf 14.4 TL ET
+BT 1 0 0 1 42.51969 11.90551 Tm (Bankify) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+BT 1 0 0 1 86.45669 13.03937 Tm (Analytics Lab \267 laboratorio acad\351mico de riesgo crediticio) Tj T* ET
+BT 1 0 0 1 523.1534 13.03937 Tm (P\341gina 1) Tj T* ET
+Q
+q
+1 0 0 1 48.51969 771.3701 cm
+q
+0 .176471 .529412 rg
+BT 1 0 0 1 0 0 Tm /F2 22 Tf 22 TL (Bankify Analytics Lab) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 755.3701 cm
+q
+.294118 .333333 .388235 rg
+BT 1 0 0 1 0 2 Tm /F1 10 Tf 12 TL (Gu\355a del modelo de predicci\363n de mora \267 Variables, m\351tricas y gr\341ficas) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 747.3701 cm
+q
+2 w
+1 J
+0 .760784 .607843 RG
+n 0 0 m 498.2362 0 l S
+Q
+Q
+q
+1 0 0 1 48.51969 711.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (1. Variables originales del dataset) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 677.3701 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 18.5 Tm /F1 9.5 Tf 14 TL (El dataset proviene de tarjetas de cr\351dito de clientes en Taiw\341n. Cada fila representa un cliente y su historial de los) Tj T* (\372ltimos 6 meses \(abril a septiembre\). La moneda es el d\363lar taiwan\351s \(NT$\).) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 319.3701 cm
+q
+0 .176471 .529412 rg
+n 0 352 496.063 -22 re f*
+1 1 1 rg
+n 0 330 496.063 -36 re f*
+.941176 .956863 1 rg
+n 0 294 496.063 -36 re f*
+1 1 1 rg
+n 0 258 496.063 -62 re f*
+.941176 .956863 1 rg
+n 0 196 496.063 -49 re f*
+1 1 1 rg
+n 0 147 496.063 -62 re f*
+.941176 .956863 1 rg
+n 0 85 496.063 -36 re f*
+1 1 1 rg
+n 0 49 496.063 -49 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 335 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Variable) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 335 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Tipo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 335 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Significado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 335 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Valores permitidos) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 312 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (LIMIT_BAL) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 312 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Continuo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 299 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (L\355mite de cr\351dito otorgado al cliente. A mayor cupo,) Tj T* (mayor confianza crediticia inicial del banco.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 312 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (N\372mero positivo \(NT$\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 276 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (SEX) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 276 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Nominal) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 276 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (G\351nero del titular de la cuenta.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 263 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (1 = Masculino) Tj  T* (2 = Femenino) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 240 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (EDUCATION) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 240 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Ordinal) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 240 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Nivel educativo m\341ximo alcanzado.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 201 cm
+q
+BT 1 0 0 1 0 43 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (1 = Posgrado) Tj  T* (2 = Universidad) Tj  T* (3 = Bachillerato) Tj  T* (4 = Otros) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (MARRIAGE) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Nominal) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Estado civil del cliente.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 152 cm
+q
+BT 1 0 0 1 0 30 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (1 = Casado) Tj  T* (2 = Soltero) Tj  T* (3 = Otros / Divorciado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 129 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (PAY_0 a PAY_6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 129 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Ordinal) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 103 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Estado de pago mensual: PAY_0 = septiembre,) Tj T* (PAY_6 = abril. Indica cu\341ntos meses de atraso) Tj T* (acumul\363 ese mes.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 90 cm
+q
+BT 1 0 0 1 0 43 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (-2 = Sin consumo) Tj  T* (-1 = Al d\355a) Tj  T* (0 = Pago m\355nimo / rotativo) Tj  T* (1 a 9 = Meses de atraso) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 54 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (PAY_AMT1 a) Tj T* (PAY_AMT6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 67 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Continuo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 54 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL -0.036483 Tw (Monto abonado por el cliente cada mes de los \372ltimos) Tj T* 0 Tw (6 meses.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 67 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (N\372mero ) Tj /F4 9 Tf 13 TL (\263) Tj /F1 9 Tf 13 TL ( 0 \(NT$\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (DEFAULT) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 5 cm
+q
+BT 1 0 0 1 0 30 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Binario) Tj  T* (\(variable) Tj T* (objetivo\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 153.4016 18 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Si el cliente cay\363 en mora el mes siguiente. Es lo que) Tj T* (el modelo aprende a predecir.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 380.1732 18 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (0 = No cay\363 en mora) Tj  T* (1 = S\355 cay\363 en mora) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 352 m 496.063 352 l S
+n 0 0 m 496.063 0 l S
+n 0 0 m 0 352 l S
+n 496.063 0 m 496.063 352 l S
+n 0 330 m 496.063 330 l S
+n 0 294 m 496.063 294 l S
+n 0 258 m 496.063 258 l S
+n 0 196 m 496.063 196 l S
+n 0 147 m 496.063 147 l S
+n 0 85 m 496.063 85 l S
+n 0 49 m 496.063 49 l S
+n 85.03937 0 m 85.03937 352 l S
+n 147.4016 0 m 147.4016 352 l S
+n 374.1732 0 m 374.1732 352 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 313.3701 cm
+Q
+q
+1 0 0 1 48.51969 287.3701 cm
+q
+0 .176471 .529412 rg
+BT 1 0 0 1 0 3 Tm /F3 11 Tf 14 TL (Variables eliminadas del modelo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 179.3701 cm
+q
+0 .176471 .529412 rg
+n 0 104 496.063 -22 re f*
+1 1 1 rg
+n 0 82 496.063 -23 re f*
+.941176 .956863 1 rg
+n 0 59 496.063 -23 re f*
+1 1 1 rg
+n 0 36 496.063 -36 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 87 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Variable) Tj T* ET
+Q
+Q
+q
+1 0 0 1 147.7323 87 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Raz\363n de eliminaci\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 64 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (ID) Tj T* ET
+Q
+Q
+q
+1 0 0 1 147.7323 64 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Solo es un identificador \372nico; no aporta ninguna informaci\363n predictiva.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 41 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (AGE) Tj T* ET
+Q
+Q
+q
+1 0 0 1 147.7323 41 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Baja relevancia predictiva seg\372n el an\341lisis de importancia de variables.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 18 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (BILL_AMT1 a BILL_AMT6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 147.7323 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Alta correlaci\363n entre s\355 \(multicolinealidad elevada\). El modelo ya captura el) Tj T* (comportamiento de facturaci\363n indirectamente a trav\351s del historial PAY.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 104 m 496.063 104 l S
+n 0 0 m 496.063 0 l S
+n 0 0 m 0 104 l S
+n 496.063 0 m 496.063 104 l S
+n 0 82 m 496.063 82 l S
+n 0 59 m 496.063 59 l S
+n 0 36 m 496.063 36 l S
+n 141.7323 0 m 141.7323 104 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 175.3701 cm
+Q
+q
+1 0 0 1 48.51969 139.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (2. Features construidas para el modelo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 91.37008 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 32.5 Tm /F1 9.5 Tf 14 TL (Las 12 columnas originales PAY y PAY_AMT est\341n muy correlacionadas entre s\355. En lugar de usarlas directamente,) Tj T* (se calculan 4 features que capturan la informaci\363n m\341s relevante con menos redundancia. A continuaci\363n se aplica) Tj T* (StandardScaler \(centrado y escalado\) a todas las variables num\351ricas.) Tj T* ET
+Q
+Q
+ 
+endstream
+endobj
+16 0 obj
+<<
+/Length 8810
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 .176471 .529412 rg
+n 0 0 595.2756 36.85039 re f*
+0 .760784 .607843 rg
+n 0 36.85039 595.2756 1.984252 re f*
+1 1 1 rg
+BT /F2 12 Tf 14.4 TL ET
+BT 1 0 0 1 42.51969 11.90551 Tm (Bankify) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+BT 1 0 0 1 86.45669 13.03937 Tm (Analytics Lab \267 laboratorio acad\351mico de riesgo crediticio) Tj T* ET
+BT 1 0 0 1 523.1534 13.03937 Tm (P\341gina 2) Tj T* ET
+Q
+q
+1 0 0 1 48.51969 562.3701 cm
+q
+0 .176471 .529412 rg
+n 0 231 496.063 -22 re f*
+1 1 1 rg
+n 0 209 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 160 496.063 -49 re f*
+1 1 1 rg
+n 0 111 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 62 496.063 -62 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 214 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Feature) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 214 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (C\363mo se calcula) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 214 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Qu\351 captura) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 191 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (PAY_max) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (M\341ximo de PAY_0, PAY_2, PAY_3,) Tj T* (PAY_4, PAY_5, PAY_6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 165 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (El peor momento crediticio del cliente en 6 meses. Si en) Tj T* (alg\372n mes acumul\363 3 meses de atraso, este valor es 3.) Tj T* (Es el predictor m\341s fuerte de mora futura.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 142 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (PAY_mean) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 142 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Promedio de los 6 valores PAY) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 116 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Si el patr\363n de retraso es cr\363nico o fue algo puntual. Un) Tj T* (valor alto sostenido indica riesgo estructural; un valor) Tj T* (bajo con un pico puntual sugiere incidente aislado.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 93 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (PAY_n_atrasos) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 93 cm
+q
+BT 1 0 0 1 0 4 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Conteo de meses con PAY > 0) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 67 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL -0.116712 Tw (Cu\341ntos de los 6 meses tuvo alg\372n atraso. Un cliente con) Tj T* 0 Tw (5 de 6 meses en atraso es muy distinto a uno con solo 1) Tj T* (de 6.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 44 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (PAY_AMT_total) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 44 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Suma de PAY_AMT1 a PAY_AMT6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Capacidad y voluntad de pago total en 6 meses. Quien) Tj T* (abona m\341s tiene menor riesgo. Complementa el historial) Tj T* (PAY: un cliente puede estar atrasado pero seguir) Tj T* (abonando.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 231 m 496.063 231 l S
+n 0 0 m 496.063 0 l S
+n 0 0 m 0 231 l S
+n 496.063 0 m 496.063 231 l S
+n 0 209 m 496.063 209 l S
+n 0 160 m 496.063 160 l S
+n 0 111 m 496.063 111 l S
+n 0 62 m 496.063 62 l S
+n 99.2126 0 m 99.2126 231 l S
+n 255.1181 0 m 255.1181 231 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 536.3701 cm
+q
+.294118 .333333 .388235 rg
+BT 1 0 0 1 0 17 Tm /F5 9 Tf 13 TL (Las variables categ\363ricas SEX, EDUCATION y MARRIAGE se convierten en columnas num\351ricas mediante one-hot) Tj T* (encoding \(drop_first=True para evitar multicolinealidad perfecta\).) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 500.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (3. Clasificador y entrenamiento) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 129.3701 cm
+q
+0 .176471 .529412 rg
+n 0 365 496.063 -22 re f*
+1 1 1 rg
+n 0 343 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 294 496.063 -49 re f*
+1 1 1 rg
+n 0 245 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 196 496.063 -49 re f*
+1 1 1 rg
+n 0 147 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 98 496.063 -49 re f*
+1 1 1 rg
+n 0 49 496.063 -49 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 348 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Par\341metro) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 348 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Valor) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 348 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Qu\351 significa) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 325 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Algoritmo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 325 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (\301rbol de Decisi\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 299 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Clasifica mediante reglas IF-THEN encadenadas. Explicable,) Tj T* (visualizable y no requiere supuestos sobre la distribuci\363n de los) Tj T* (datos.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 276 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (max_depth) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 276 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (6) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 250 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (El \341rbol no puede tener m\341s de 6 niveles de profundidad.) Tj T* (Controla el sobreajuste: un \341rbol muy profundo memoriza el) Tj T* (entrenamiento pero falla en datos nuevos.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 227 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (criterion) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 227 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (entropy) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 201 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Usa entrop\355a de informaci\363n para elegir el mejor split en cada) Tj T* (nodo. Mide cu\341nto reduce la incertidumbre cada variable) Tj T* (candidata.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (class_weight) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 178 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (balanced) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 152 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Compensa el desbalance de clases \(~22% mora vs 78% sin) Tj T* (mora\). Da m\341s peso a los ejemplos de mora para que el modelo) Tj T* (no los ignore.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 129 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Divisi\363n de datos) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 116 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (80% entrenamiento) Tj  T* (20% prueba \(estratificado\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 103 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (El 20% de prueba nunca es visto por el modelo durante el) Tj T* (entrenamiento. La estratificaci\363n garantiza que ambas) Tj T* (particiones conserven la misma proporci\363n de mora.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 80 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Validaci\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 80 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Validaci\363n cruzada 5-fold) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 54 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (El dataset de entrenamiento se divide en 5 partes; el modelo se) Tj T* (entrena 5 veces usando 4 partes y validando con la quinta.) Tj T* (Estima la varianza del desempe\361o.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Optimizaci\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Optuna) Tj T* ET
+Q
+Q
+q
+1 0 0 1 232.7717 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Busca autom\341ticamente la mejor combinaci\363n de) Tj T* (hiperpar\341metros \(max_depth, min_samples_leaf,) Tj T* (min_samples_split, etc.\) mediante muestreo bayesiano.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 365 m 496.063 365 l S
+n 0 0 m 496.063 0 l S
+n 0 0 m 0 365 l S
+n 496.063 0 m 496.063 365 l S
+n 0 343 m 496.063 343 l S
+n 0 294 m 496.063 294 l S
+n 0 245 m 496.063 245 l S
+n 0 196 m 496.063 196 l S
+n 0 147 m 496.063 147 l S
+n 0 98 m 496.063 98 l S
+n 0 49 m 496.063 49 l S
+n 99.2126 0 m 99.2126 365 l S
+n 226.7717 0 m 226.7717 365 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 93.37008 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (4. M\351tricas mostradas en pantalla) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 59.37008 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 18.5 Tm /F1 9.5 Tf 14 TL (Estas m\351tricas se calculan sobre el 20% de datos que el modelo nunca vio durante el entrenamiento \(conjunto de) Tj T* (prueba\).) Tj T* ET
+Q
+Q
+ 
+endstream
+endobj
+17 0 obj
+<<
+/Length 8417
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 .176471 .529412 rg
+n 0 0 595.2756 36.85039 re f*
+0 .760784 .607843 rg
+n 0 36.85039 595.2756 1.984252 re f*
+1 1 1 rg
+BT /F2 12 Tf 14.4 TL ET
+BT 1 0 0 1 42.51969 11.90551 Tm (Bankify) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+BT 1 0 0 1 86.45669 13.03937 Tm (Analytics Lab \267 laboratorio acad\351mico de riesgo crediticio) Tj T* ET
+BT 1 0 0 1 523.1534 13.03937 Tm (P\341gina 3) Tj T* ET
+Q
+q
+1 0 0 1 48.51969 500.3701 cm
+q
+0 .176471 .529412 rg
+n 0 293 496.063 -22 re f*
+1 1 1 rg
+n 0 271 496.063 -62 re f*
+.941176 .956863 1 rg
+n 0 209 496.063 -49 re f*
+1 1 1 rg
+n 0 160 496.063 -62 re f*
+.941176 .956863 1 rg
+n 0 98 496.063 -49 re f*
+1 1 1 rg
+n 0 49 496.063 -49 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 276 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (M\351trica) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 276 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Qu\351 mide) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 276 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (C\363mo interpretarla) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 240 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Exactitud) Tj  T* (\(Accuracy\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 240 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Porcentaje de predicciones) Tj T* (correctas sobre el total de clientes.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 214 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Ej: 82% = acert\363 82 de cada 100. \332til pero enga\361osa con) Tj T* (clases desbalanceadas: un modelo que siempre predice) Tj T* ('sin mora' obtendr\355a ~78% de exactitud sin detectar) Tj T* (ning\372n moroso.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 191 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Precisi\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 165 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (De todos los clientes marcados) Tj T* (como 'va a caer en mora', qu\351) Tj T* (porcentaje realmente cay\363.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 165 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Alta precisi\363n = pocas falsas alarmas. Si es 60%, de) Tj T* (cada 10 alertas generadas, 4 corresponden a clientes) Tj T* (que s\355 pagaron.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 129 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Exhaustividad) Tj  T* (\(Recall\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 116 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL -0.110248 Tw (De todos los clientes que s\355 cayeron) Tj T* 0 Tw (en mora, cu\341ntos detect\363 el) Tj T* (modelo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 103 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Alto recall = el modelo no deja escapar casos reales de) Tj T* (mora. Es la m\351trica m\341s cr\355tica en contexto de riesgo) Tj T* (crediticio: un moroso no detectado representa una) Tj T* (p\351rdida real.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 80 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (F1-Score) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 67 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Media arm\363nica entre Precisi\363n y) Tj T* (Recall.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 54 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (\332til cuando importan ambas: no generar falsas alarmas) Tj T* (pero tampoco dejar pasar morosos. Valor entre 0 y 1;) Tj T* (mayor es mejor.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (AUC-ROC) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (\301rea bajo la curva ROC. Mide la) Tj T* (capacidad discriminativa global del) Tj T* (modelo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 261.1181 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (0.5 = modelo aleatorio \(l\355nea diagonal\). 1.0 = modelo) Tj T* (perfecto. El modelo actual supera el baseline. Es) Tj T* (independiente del umbral de decisi\363n elegido.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 293 m 496.063 293 l S
+n 0 0 m 496.063 0 l S
+n 0 0 m 0 293 l S
+n 496.063 0 m 496.063 293 l S
+n 0 271 m 496.063 271 l S
+n 0 209 m 496.063 209 l S
+n 0 160 m 496.063 160 l S
+n 0 98 m 496.063 98 l S
+n 0 49 m 496.063 49 l S
+n 99.2126 0 m 99.2126 293 l S
+n 255.1181 0 m 255.1181 293 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 464.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (5. Matriz de confusi\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 430.3701 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 18.5 Tm /F1 9.5 Tf 14 TL (Tabla 2\3272 que muestra los 4 posibles resultados de una clasificaci\363n binaria. Las celdas de la diagonal principal \(TN y) Tj T* (TP\) son aciertos; las otras dos son errores.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 285.3701 cm
+q
+0 .176471 .529412 rg
+n 0 139 510.2362 -24 re f*
+.941176 .956863 1 rg
+n 0 115 99.2126 -115 re f*
+1 1 1 rg
+n 99.2126 115 411.0236 -51 re f*
+1 .968627 .929412 rg
+n 99.2126 64 411.0236 -64 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 133 cm
+Q
+q
+1 0 0 1 105.2126 121 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Predicho: Sin mora) Tj T* ET
+Q
+Q
+q
+1 0 0 1 317.811 121 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Predicho: Mora) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 96 cm
+q
+0 .176471 .529412 rg
+BT 1 0 0 1 0 4 Tm /F3 9 Tf 13 TL (Real: Sin mora) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 83 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (TN \227 Verdadero Negativo) Tj  T* (Correcto: dijo 'sin mora' y ten\355a raz\363n.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 317.811 70 cm
+q
+BT 1 0 0 1 0 30 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (FP \227 Falso Positivo) Tj  T* (Falsa alarma: dijo 'mora' pero el cliente s\355) Tj T* (pag\363.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 45 cm
+q
+0 .176471 .529412 rg
+BT 1 0 0 1 0 4 Tm /F3 9 Tf 13 TL (Real: Mora) Tj T* ET
+Q
+Q
+q
+1 0 0 1 105.2126 6 cm
+q
+BT 1 0 0 1 0 43 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (FN \227 Falso Negativo) Tj  T* (Caso perdido: dijo 'sin mora' pero el cliente no) Tj T* (pag\363.) Tj  T* (Es el peor error en contexto de riesgo crediticio.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 317.811 19 cm
+q
+BT 1 0 0 1 0 30 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (TP \227 Verdadero Positivo) Tj  T* (Correcto: dijo 'mora' y el cliente s\355 cay\363 en) Tj T* (mora.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 139 m 510.2362 139 l S
+n 0 0 m 510.2362 0 l S
+n 0 0 m 0 139 l S
+n 510.2362 0 m 510.2362 139 l S
+n 0 115 m 510.2362 115 l S
+n 0 64 m 510.2362 64 l S
+n 99.2126 0 m 99.2126 139 l S
+n 311.811 0 m 311.811 139 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 249.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (6. Gr\341ficas de la aplicaci\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 107.3701 cm
+q
+0 .176471 .529412 rg
+n 0 136 496.063 -22 re f*
+1 1 1 rg
+n 0 114 496.063 -114 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 119 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Gr\341fica) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 119 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (D\363nde aparece) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 119 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Qu\351 muestra) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 119 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (C\363mo leerla) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 96 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Curva ROC) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 70 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Secci\363n) Tj T* (resultados del) Tj T* (modelo) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 70 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (C\363mo var\355a la capacidad del) Tj T* (modelo al ajustar el umbral) Tj T* (de decisi\363n.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 95 Tm /F1 9 Tf 13 TL (Eje X: tasa de falsos positivos \(falsas alarmas) Tj T* (generadas\). Eje Y: tasa de verdaderos) Tj T* (positivos \(morosos reales detectados\). La) Tj T* (l\355nea diagonal es el baseline de un modelo) Tj T* (aleatorio \(AUC 0.5\). El punto rojo marca el) Tj T* (umbral \363ptimo calculado con el \315ndice de) Tj T* (Youden: el mejor balance entre capturar) Tj T* (morosos y minimizar falsas alarmas.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 136 m 496.063 136 l S
+n 0 0 m 0 136 l S
+n 496.063 0 m 496.063 136 l S
+n 0 0 m 496.063 0 l S
+n 0 114 m 496.063 114 l S
+n 85.03937 0 m 85.03937 136 l S
+n 170.0787 0 m 170.0787 136 l S
+n 297.6378 0 m 297.6378 136 l S
+Q
+Q
+Q
+ 
+endstream
+endobj
+18 0 obj
+<<
+/Length 8425
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 .176471 .529412 rg
+n 0 0 595.2756 36.85039 re f*
+0 .760784 .607843 rg
+n 0 36.85039 595.2756 1.984252 re f*
+1 1 1 rg
+BT /F2 12 Tf 14.4 TL ET
+BT 1 0 0 1 42.51969 11.90551 Tm (Bankify) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+BT 1 0 0 1 86.45669 13.03937 Tm (Analytics Lab \267 laboratorio acad\351mico de riesgo crediticio) Tj T* ET
+BT 1 0 0 1 523.1534 13.03937 Tm (P\341gina 4) Tj T* ET
+Q
+q
+1 0 0 1 48.51969 318.3701 cm
+q
+0 .176471 .529412 rg
+n 0 475 496.063 -22 re f*
+1 1 1 rg
+n 0 453 496.063 -101 re f*
+.941176 .956863 1 rg
+n 0 352 496.063 -88 re f*
+1 1 1 rg
+n 0 264 496.063 -62 re f*
+.941176 .956863 1 rg
+n 0 202 496.063 -114 re f*
+1 1 1 rg
+n 0 88 496.063 -88 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 458 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Gr\341fica) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 458 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (D\363nde aparece) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 458 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Qu\351 muestra) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 458 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (C\363mo leerla) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 422 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Importancia de) Tj T* (variables \(SHAP\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 396 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Secci\363n) Tj T* (resultados y) Tj T* (predicci\363n) Tj T* (individual) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 409 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Qu\351 variables pesaron m\341s) Tj T* (en las decisiones del) Tj T* (modelo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 357 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 82 Tm /F1 9 Tf 13 TL (Barras horizontales ordenadas de mayor a) Tj T* (menor impacto promedio. SHAP \(SHapley) Tj T* (Additive exPlanations\) mide cu\341nto empuj\363) Tj T* (cada variable la predicci\363n hacia mora o hacia) Tj T* (no mora. Las barras m\341s largas son las) Tj T* (variables m\341s influyentes. PAY_max y) Tj T* (PAY_n_atrasos suelen dominar.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 321 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (\301rbol de decisi\363n) Tj  T* (\(profundidad 3\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 321 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Secci\363n) Tj T* (explicabilidad) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 308 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Las reglas IF-THEN que el) Tj T* (modelo aplica para clasificar) Tj T* (un cliente.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 269 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 69 Tm /F1 9 Tf 13 TL -0.021972 Tw (Cada nodo interior muestra la variable usada y) Tj T* 0 Tw (el umbral de corte \(ej: PAY_max ) Tj /F4 9 Tf 13 TL (\243) Tj /F1 9 Tf 13 TL ( 0.5\). Las) Tj T* (hojas muestran la clase predicha y cu\341ntos) Tj T* (clientes del entrenamiento caen en esa rama.) Tj T* (Colores m\341s intensos = clase m\341s dominante) Tj T* (en ese nodo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 220 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Tarjeta de) Tj T* (predicci\363n) Tj T* (individual) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 233 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Paso de) Tj T* (simulaci\363n) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 220 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (El resultado del modelo para) Tj T* (los datos ingresados por el) Tj T* (usuario.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 207 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Muestra: etiqueta \('Alta/Baja probabilidad de) Tj T* (mora'\), porcentaje de confianza) Tj T* (\(predict_proba\), barra de progreso visual y el) Tj T* (nombre del modelo usado.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 171 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Dashboard EDA) Tj  T* (\(8 gr\341ficos\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 158 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Secci\363n) Tj T* (exploraci\363n de) Tj T* (datos) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 158 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Distribuciones y relaciones) Tj T* (entre variables antes de) Tj T* (modelar.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 93 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 95 Tm /F1 9 Tf 13 TL (1\) Distribuci\363n de DEFAULT: desbalance) Tj T* (~22%/78%. 2\) Distribuci\363n de LIMIT_BAL:) Tj T* (mayor\355a concentrada en cupos bajos. 3\)) Tj T* (LIMIT_BAL vs DEFAULT: morosos tienden a) Tj T* (tener cupos menores. 4\) Edad vs DEFAULT.) Tj T* (5\) Cupo promedio por edad/DEFAULT. 6-7\)) Tj T* (Heatmap de correlaciones en dos formatos. 8\)) Tj T* (An\341lisis multivariado simult\341neo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 57 cm
+q
+BT 1 0 0 1 0 17 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Gr\341fico 3D) Tj  T* (de comentarios) Tj T* ET
+Q
+Q
+q
+1 0 0 1 91.03937 44 cm
+q
+BT 1 0 0 1 0 30 Tm 13 TL /F1 9 Tf .062745 .094118 .156863 rg (Secci\363n) Tj T* (comentarios) Tj  T* (\(paso 6\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 176.0787 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 43 Tm /F1 9 Tf 13 TL (Proyecci\363n UMAP de los) Tj T* (comentarios de todos los) Tj T* (participantes en el espacio) Tj T* (sem\341ntico.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 303.6378 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 69 Tm /F1 9 Tf 13 TL (Comentarios con significado similar quedan) Tj T* (cercanos en el espacio 3D. Colores = tipo de) Tj T* (comentario \(dataset, analytics, prediction\).) Tj T* (Puntos grandes y opacos = sesi\363n actual.) Tj T* (Puntos peque\361os y tenues = otras sesiones.) Tj T* (No es parte del modelo de mora.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 475 m 496.063 475 l S
+n 0 453 m 0 475 l S
+n 0 0 m 0 453 l S
+n 496.063 453 m 496.063 475 l S
+n 496.063 0 m 496.063 453 l S
+n 0 0 m 496.063 0 l S
+n 0 453 m 496.063 453 l S
+n 85.03937 453 m 85.03937 475 l S
+n 170.0787 453 m 170.0787 475 l S
+n 297.6378 453 m 297.6378 475 l S
+n 0 352 m 496.063 352 l S
+n 0 264 m 496.063 264 l S
+n 0 202 m 496.063 202 l S
+n 0 88 m 496.063 88 l S
+n 85.03937 0 m 85.03937 453 l S
+n 170.0787 0 m 170.0787 453 l S
+n 297.6378 0 m 297.6378 453 l S
+Q
+Q
+Q
+q
+1 0 0 1 48.51969 282.3701 cm
+q
+0 .760784 .607843 rg
+BT 1 0 0 1 0 5 Tm /F2 13 Tf 18 TL (7. Puntaje de predicci\363n individual) Tj T* ET
+Q
+Q
+q
+1 0 0 1 48.51969 262.3701 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4.5 Tm /F1 9.5 Tf 14 TL -0.080205 Tw (Cuando se simula un cliente espec\355fico ingresando sus datos, el modelo produce los siguientes elementos en pantalla:) Tj T* 0 Tw ET
+Q
+Q
+q
+1 0 0 1 48.51969 100.3701 cm
+q
+0 .176471 .529412 rg
+n 0 156 496.063 -22 re f*
+1 1 1 rg
+n 0 134 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 85 496.063 -49 re f*
+1 1 1 rg
+n 0 36 496.063 -36 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 139 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Valor mostrado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 139 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Significado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 116 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Probabilidad de mora \(%\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 90 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Qu\351 tan seguro est\341 el modelo de que ese cliente caer\341 en mora. Ejemplo: 73% = riesgo) Tj T* (alto. Proviene de predict_proba del \341rbol de decisi\363n, que estima la proporci\363n de) Tj T* (ejemplos de mora en la hoja correspondiente.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 67 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Etiqueta) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 41 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL ('Alta probabilidad de mora' o 'Baja probabilidad de mora' seg\372n si la probabilidad supera) Tj T* (el umbral \363ptimo calculado con el \315ndice de Youden. Este umbral no es necesariamente) Tj T* (50%.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 18 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Barra de progreso) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 17 Tm /F1 9 Tf 13 TL (Representaci\363n visual del porcentaje de probabilidad. M\341s llena = mayor riesgo percibido) Tj T* (por el modelo.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 156 m 496.063 156 l S
+n 0 0 m 0 156 l S
+n 496.063 0 m 496.063 156 l S
+n 0 0 m 496.063 0 l S
+n 0 134 m 496.063 134 l S
+n 0 85 m 496.063 85 l S
+n 0 36 m 496.063 36 l S
+n 127.5591 0 m 127.5591 156 l S
+Q
+Q
+Q
+ 
+endstream
+endobj
+19 0 obj
+<<
+/Length 2049
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+0 .176471 .529412 rg
+n 0 0 595.2756 36.85039 re f*
+0 .760784 .607843 rg
+n 0 36.85039 595.2756 1.984252 re f*
+1 1 1 rg
+BT /F2 12 Tf 14.4 TL ET
+BT 1 0 0 1 42.51969 11.90551 Tm (Bankify) Tj T* ET
+BT /F1 7.5 Tf 9 TL ET
+BT 1 0 0 1 86.45669 13.03937 Tm (Analytics Lab \267 laboratorio acad\351mico de riesgo crediticio) Tj T* ET
+BT 1 0 0 1 523.1534 13.03937 Tm (P\341gina 5) Tj T* ET
+Q
+q
+1 0 0 1 48.51969 673.3701 cm
+q
+0 .176471 .529412 rg
+n 0 120 496.063 -22 re f*
+1 1 1 rg
+n 0 98 496.063 -49 re f*
+.941176 .956863 1 rg
+n 0 49 496.063 -49 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 6 103 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Valor mostrado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 103 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3 Tm /F3 9 Tf 12 TL (Significado) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 80 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Top 3 variables \(SHAP local\)) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 54 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Las 3 variables que m\341s influyeron en la predicci\363n de ese cliente espec\355fico, no del) Tj T* (modelo en general. Cada cliente puede tener factores determinantes distintos: para uno) Tj T* (puede ser PAY_max, para otro PAY_AMT_total.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 6 31 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 4 Tm /F1 9 Tf 13 TL (Explicaci\363n pedag\363gica) Tj T* ET
+Q
+Q
+q
+1 0 0 1 133.5591 5 cm
+q
+.062745 .094118 .156863 rg
+BT 1 0 0 1 0 30 Tm /F1 9 Tf 13 TL (Texto en lenguaje natural que resume: etiqueta, probabilidad estimada, top 3 variables) Tj T* (locales y su interpretaci\363n en contexto crediticio. Generado por el agente de explicaci\363n) Tj T* (pedag\363gica usando el modelo de lenguaje.) Tj T* ET
+Q
+Q
+q
+1 J
+1 j
+.796078 .835294 .960784 RG
+.5 w
+n 0 120 m 496.063 120 l S
+n 0 98 m 0 120 l S
+n 0 0 m 0 98 l S
+n 496.063 98 m 496.063 120 l S
+n 496.063 0 m 496.063 98 l S
+n 0 0 m 496.063 0 l S
+n 0 98 m 496.063 98 l S
+n 127.5591 98 m 127.5591 120 l S
+n 0 49 m 496.063 49 l S
+n 127.5591 0 m 127.5591 98 l S
+Q
+Q
+Q
+ 
+endstream
+endobj
+xref
+0 20
+0000000000 65535 f 
+0000000061 00000 n 
+0000000132 00000 n 
+0000000239 00000 n 
+0000000347 00000 n 
+0000000459 00000 n 
+0000000536 00000 n 
+0000000741 00000 n 
+0000000856 00000 n 
+0000001061 00000 n 
+0000001266 00000 n 
+0000001472 00000 n 
+0000001678 00000 n 
+0000001748 00000 n 
+0000002029 00000 n 
+0000002115 00000 n 
+0000011063 00000 n 
+0000019925 00000 n 
+0000028394 00000 n 
+0000036871 00000 n 
+trailer
+<<
+/ID 
+[<bc914dfa64222755c967287253fb37fd><bc914dfa64222755c967287253fb37fd>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 13 0 R
+/Root 12 0 R
+/Size 20
+>>
+startxref
+38972
+%%EOF
